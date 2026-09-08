@@ -6,14 +6,12 @@
   <meta name="theme-color" content="#1557ff">
   <title>وصلني بطريقك ⚡ الكابتن</title>
 
-  <!-- إعدادات تطبيق الهاتف المدمج (PWA) -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="كابتن وصلني">
   <link rel="apple-touch-icon" href="logo.png">
   <link rel="icon" type="image/png" href="logo.png">
 
-  <!-- توليد المانفيست تلقائياً لتثبيت التطبيق على الشاشة -->
   <script>
     const manifestData = {
       name: "وصلني بطريقك - الكابتن",
@@ -29,12 +27,10 @@
         { src: "logo.png", sizes: "512x512", type: "image/png" }
       ]
     };
-    const stringManifest = JSON.stringify(manifestData);
-    const blobManifest = new Blob([stringManifest], { type: 'application/json' });
-    const manifestURL = URL.createObjectURL(blobManifest);
+    const blobManifest = new Blob([JSON.stringify(manifestData)], { type: 'application/json' });
     const linkTag = document.createElement('link');
     linkTag.rel = 'manifest';
-    linkTag.href = manifestURL;
+    linkTag.href = URL.createObjectURL(blobManifest);
     document.head.appendChild(linkTag);
   </script>
 
@@ -64,7 +60,7 @@
       animation:meshFloat 20s ease-in-out infinite alternate}
     @keyframes meshFloat{0%{transform:translate(0,0) scale(1)}100%{transform:translate(3%,-3%) scale(1.08)}}
 
-    .glass{background:var(--glass);border:1px solid var(--stroke);border-radius:var(--r);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);box-shadow:0 20px 50px rgba(0,0,0,0.45)}
+    .glass{background:var(--glass);border:1px solid var(--stroke);border-radius:var(--r);backdrop-filter:blur(24px);box-shadow:0 20px 50px rgba(0,0,0,0.45)}
     .btn-grad{background:var(--grad-blue);color:#fff;border:none;padding:15px 20px;border-radius:18px;font-size:15px;font-weight:900;cursor:pointer;transition:var(--tr);width:100%;box-shadow:0 10px 30px rgba(21,87,255,.4)}
     .btn-grad:active{transform:scale(.97)}
     .btn-ghost{background:var(--glass2);border:1px solid var(--stroke);color:var(--txt);padding:13px 18px;border-radius:16px;font-size:13px;font-weight:800;cursor:pointer;transition:var(--tr)}
@@ -121,7 +117,6 @@
     .pulse-dot{width:9px;height:9px;border-radius:50%;background:var(--red)}
     .switch-wrap.on .pulse-dot{background:var(--green);box-shadow:0 0 10px var(--green)}
 
-    /* بطاقة القفل الصارم من الإدارة */
     .debt-lock-card{
       position:absolute;top:76px;left:16px;right:16px;z-index:700;
       background:rgba(239,68,68,0.25);border:2px solid var(--red);border-radius:20px;padding:18px;
@@ -146,6 +141,8 @@
     .hero-profile{padding:20px;display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,rgba(34,211,238,.12),rgba(139,92,246,.08));border:1px solid var(--stroke2);border-radius:26px}
     .hero-avatar{width:64px;height:64px;border-radius:22px;object-fit:cover;border:2.5px solid var(--cyan);background:#0f172a}
 
+    .history-card{background:rgba(255,255,255,0.03);border:1px solid var(--stroke);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:8px}
+
     .modal{position:fixed;inset:0;z-index:5000;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(4,7,15,0.85);backdrop-filter:blur(16px)}
     .modal.on{display:flex}
     .modal-card{width:100%;max-width:420px;padding:26px 22px;background:rgba(14,23,38,0.98);border:1px solid var(--stroke);border-radius:28px;color:#fff;box-shadow:0 30px 70px rgba(0,0,0,.7)}
@@ -155,7 +152,6 @@
   <div class="mesh-bg"></div>
   <div id="toastContainer"></div>
 
-  <!-- بوابة تسجيل الدخول والتسجيل بالخطوات مع الوثائق الأربعة بوجه وظهر -->
   <div class="portal" id="portal">
     <div class="portal-card glass">
       <div class="logo-orbit">
@@ -169,7 +165,6 @@
         <button id="tabReg" onclick="authMode('reg')">حساب جديد</button>
       </div>
 
-      <!-- شاشة الانتظار اللحظية -->
       <div class="pending-box" id="pendingBox">
         <div class="pulse-ring">⏳</div>
         <h3 style="font-size:18px;margin-bottom:6px;color:#fff;">طلبك قيد التدقيق لدى الإدارة</h3>
@@ -188,7 +183,6 @@
       </div>
 
       <div id="paneReg" style="display:none">
-        <!-- الخطوة 1: البيانات الشخصية -->
         <div id="rs1" style="display:flex;flex-direction:column;gap:12px;">
           <div class="inp-w" style="margin:0"><label>الاسم الكامل (الثلاثي)</label><div class="inp"><input type="text" id="regName" placeholder="الاسم الثلاثي"></div></div>
           <div class="inp-w" style="margin:0"><label>رقم الهاتف</label><div class="inp"><input type="tel" id="regPhone" placeholder="07XXXXXXXXX" maxlength="11"></div></div>
@@ -197,7 +191,6 @@
           <button class="btn-grad" onclick="goStep(2)">التالي: بيانات المركبة ←</button>
         </div>
 
-        <!-- الخطوة 2: بيانات المركبة -->
         <div id="rs2" style="display:none;flex-direction:column;gap:12px;">
           <div class="inp-w" style="margin:0"><label>نوع وموديل السيارة</label><div class="inp"><input type="text" id="regCar" placeholder="هيونداي النترا 2022"></div></div>
           <div class="inp-w" style="margin:0"><label>رقم اللوحة المرورية</label><div class="inp"><input type="text" id="regPlate" placeholder="بغداد 12345"></div></div>
@@ -207,7 +200,6 @@
           </div>
         </div>
 
-        <!-- الخطوة 3: المستمسكات الأربعة بوجه وظهر (8 صور) -->
         <div id="rs3" style="display:none;flex-direction:column;gap:10px;">
           <div class="inp-w" style="margin-bottom:6px"><label>الصورة الشخصية للكابتن</label>
             <div class="uptile" id="tAva"><span>📷</span><span>صورة شخصية واضحة</span><input type="file" accept="image/*" class="file-input-overlay" onchange="pickDoc(this,'avatar','tAva')"></div>
@@ -254,7 +246,6 @@
     </div>
   </div>
 
-  <!-- 1. شاشة الرادار -->
   <div class="page on" id="pgRadar">
     <div id="map"></div>
     
@@ -269,21 +260,22 @@
       </div>
     </div>
 
-    <!-- بطاقة قفل الديون والحظر الإداري الفوري -->
     <div class="debt-lock-card" id="debtNoticeCard">
       <h4 style="color:var(--red);font-weight:950;font-size:16px;" id="txtLockTitle">🔒 الحساب مقفل أو محظور من الإدارة</h4>
       <p style="font-size:12.5px;line-height:1.7;" id="txtLockDesc">تم تقييد وصولك للرادار لوجود مستحقات متأخرة تجاوزت 10,000 د.ع أو حظر إداري مباشر. يرجى مراجعة المحفظة لتسوية الحساب.</p>
       <button class="btn-ghost" style="border-color:var(--red);color:#fff;background:rgba(239,68,68,.35)" onclick="nav('pgEarn', document.querySelectorAll('.nitem')[1])">💳 تسديد الديون / شحن المحفظة الآن</button>
     </div>
 
-    <!-- كارت الطلب الوارد -->
     <div class="order-card" id="orderCard">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div>
           <div style="font-size:11px;color:var(--muted);font-weight:900">أجرة المشوار</div>
           <div class="fare-big" id="oFare">1,500 د.ع</div>
         </div>
-        <div style="font-size:25px;font-weight:950;color:var(--cyan)" id="oTimer">15</div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+          <div style="font-size:25px;font-weight:950;color:var(--cyan)" id="oTimer">15</div>
+          <span id="oCategoryBadge" style="background:rgba(34,211,238,0.18);color:var(--cyan);border:1px solid var(--stroke2);padding:4px 11px;border-radius:12px;font-size:12px;font-weight:950;">توفير</span>
+        </div>
       </div>
       <div class="glass" style="padding:14px;display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:bold;">
         <div>📍 من: <span id="oPickup">—</span></div>
@@ -295,10 +287,12 @@
       </div>
     </div>
 
-    <!-- كارت المشوار الجاري -->
     <div class="trip-card" id="tripCard">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="color:var(--cyan);font-weight:950;" id="phaseBadge">🧭 في الطريق للزبون</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="color:var(--cyan);font-weight:950;" id="phaseBadge">🧭 في الطريق للزبون</span>
+          <span id="tCategoryBadge" style="background:rgba(255,255,255,0.08);border:1px solid var(--stroke);padding:3px 8px;border-radius:8px;font-size:11px;font-weight:900;">توفير</span>
+        </div>
         <div style="font-size:19px;font-weight:950;color:var(--green)" id="tFare">0 د.ع</div>
       </div>
 
@@ -313,7 +307,6 @@
         </div>
       </div>
 
-      <!-- أزرار الملاحة الخارجية (Waze & Google Maps) -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
         <button class="btn-ghost" style="background:rgba(34,211,238,0.12);border-color:var(--cyan);color:#fff;" onclick="openNavigationApp('waze')">
           🚗 ملاحة Waze
@@ -331,12 +324,10 @@
     </div>
   </div>
 
-  <!-- 2. شاشة المحفظة والأرباح المركزية -->
   <div class="page" id="pgEarn">
     <div class="wrap">
       <div class="sec-title">💰 المحفظة والأرباح المركزية</div>
 
-      <!-- رصيد المحفظة المشحون المتاح -->
       <div class="glass" style="padding:22px;background:linear-gradient(135deg,rgba(34,211,238,0.15),rgba(21,87,255,0.18));border-color:var(--cyan);">
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <span style="font-size:12px;color:var(--cyan);font-weight:900;">💳 رصيد المحفظة المشحون المتاح</span>
@@ -346,7 +337,6 @@
         <div style="font-size:11px;color:var(--muted);margin-top:4px;">تُخصم منه عمولات المشاوير تلقائياً وتمنع قفل الحساب.</div>
       </div>
 
-      <!-- صافي دخل المشاوير ومستحقات المنصة -->
       <div class="glass" style="padding:22px;">
         <div style="font-size:12px;color:var(--muted);font-weight:900;">صافي دخل المشاوير المستلم نقدياً من الركاب</div>
         <div style="font-size:30px;font-weight:950;color:var(--green);margin-top:4px;" id="earnTotal">0 د.ع</div>
@@ -388,7 +378,6 @@
     </div>
   </div>
 
-  <!-- 3. شاشة البروفايل والمعلومات الشخصية -->
   <div class="page" id="pgProfile">
     <div class="wrap">
       <div class="sec-title">👤 الملف الشخصي للكابتن</div>
@@ -399,6 +388,16 @@
           <h3 style="font-size:17px;font-weight:950;" id="proName">كابتن معتمد</h3>
           <span style="font-size:12px;color:var(--cyan);" id="proPhone">07XXXXXXXXX</span>
           <div style="font-size:11px;color:var(--green);margin-top:4px;font-weight:bold;">● الحساب موثق لدى المنصة</div>
+        </div>
+      </div>
+
+      <div class="glass" style="padding:18px;display:flex;flex-direction:column;gap:10px;">
+        <h4 style="font-size:14px;font-weight:950;color:var(--amber);display:flex;justify-content:space-between;">
+          <span>🚨 سجل ومتابعة البلاغات</span>
+          <small style="font-size:11px;color:var(--muted);">تحديث الإدارة لحظي</small>
+        </h4>
+        <div id="disputeStatusContainer" style="display:flex;flex-direction:column;gap:8px;">
+          <div style="text-align:center;font-size:12px;color:var(--muted);">لا توجد بلاغات نشطة مسجلة.</div>
         </div>
       </div>
 
@@ -414,6 +413,13 @@
         </div>
       </div>
 
+      <div class="glass" style="padding:18px;display:flex;flex-direction:column;gap:12px;">
+        <h4 style="font-size:14px;font-weight:950;color:var(--green);">📋 سجل المشاوير المكتملة وتحميل الوصل</h4>
+        <div id="captainTripsHistoryList" style="display:flex;flex-direction:column;gap:10px;">
+          <div style="text-align:center;font-size:12px;color:var(--muted);">جاري تحميل سجل المشاوير...</div>
+        </div>
+      </div>
+
       <div class="glass" style="padding:18px;display:flex;flex-direction:column;gap:10px;">
         <h4 style="font-size:14px;font-weight:950;">⚙️ خيارات الحساب</h4>
         <button class="btn-ghost" style="text-align:right;" onclick="openDisputeModal()">🚨 تقديم بلاغ أو شكوى طارئة للإدارة</button>
@@ -422,7 +428,6 @@
     </div>
   </div>
 
-  <!-- نافذة إلغاء الرحلة وتحديد السبب -->
   <div class="modal" id="capCancelModal">
     <div class="modal-card">
       <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--stroke);padding-bottom:10px;margin-bottom:14px;">
@@ -443,7 +448,6 @@
     </div>
   </div>
 
-  <!-- نافذة المراسلة الزجاجية للكابتن -->
   <div class="modal" id="captainChatModal">
     <div class="modal-card" style="height:480px;display:flex;flex-direction:column;">
       <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--stroke);padding-bottom:10px;">
@@ -465,7 +469,6 @@
     </div>
   </div>
 
-  <!-- نافذة شحن المحفظة وتسديد الديون -->
   <div class="modal" id="walletModal">
     <div class="modal-card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--stroke);padding-bottom:10px;">
@@ -492,7 +495,6 @@
     </div>
   </div>
 
-  <!-- نافذة تقديم بلاغ طارئ -->
   <div class="modal" id="disputeModal">
     <div class="modal-card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--stroke);padding-bottom:10px;">
@@ -547,6 +549,7 @@
     let approvalWatcher = null;
     let capChatUnsubscribe = null;
     let gpsWatchId = null;
+    let currentCoords = null;
 
     window.docs = { 
       avatar:'', 
@@ -556,6 +559,25 @@
       residenceFront:'', residenceBack:'', 
       receipt:'' 
     };
+
+    function createLocationPin(text, pinColor, iconSymbol) {
+      return L.divIcon({
+        className: "",
+        html: `
+          <div style="position:relative;display:flex;flex-direction:column;align-items:center;width:36px;height:58px;">
+            <div style="position:absolute;bottom:38px;white-space:nowrap;background:rgba(10,16,28,0.92);color:#fff;border:1.5px solid ${pinColor};padding:3px 9px;border-radius:10px;font-size:11px;font-weight:950;box-shadow:0 4px 14px rgba(0,0,0,0.6);display:flex;align-items:center;gap:4px;">
+              <span>${iconSymbol}</span>
+              <span>${text}</span>
+            </div>
+            <div style="width:34px;height:34px;background:${pinColor};border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #ffffff;box-shadow:0 8px 16px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;">
+              <div style="width:10px;height:10px;background:#fff;border-radius:50%;"></div>
+            </div>
+          </div>
+        `,
+        iconSize: [36, 58],
+        iconAnchor: [18, 58]
+      });
+    }
 
     function create3DCarPin(heading = 0) {
       return L.divIcon({
@@ -592,6 +614,7 @@
     let capMarker = null;
 
     const update3DCar = (lat, lng, heading = 0) => {
+      currentCoords = { lat, lng };
       if (!capMarker) {
         capMarker = L.marker([lat, lng], { icon: create3DCarPin(heading), zIndexOffset: 1000 }).addTo(map);
       } else {
@@ -599,6 +622,21 @@
         capMarker.setIcon(create3DCarPin(heading));
       }
     };
+
+    async function drawRoadRoute(start, end, color = "#1557ff") {
+      if (!start || !end) return;
+      try {
+        const url = `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (!data.routes || !data.routes.length) return;
+        const coordinates = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+        const line = L.polyline(coordinates, { color: color, weight: 6, opacity: 0.9 }).addTo(layers);
+        map.fitBounds(line.getBounds(), { padding: [70, 70] });
+      } catch (e) {
+        console.error("OSRM Route Error: ", e);
+      }
+    }
 
     function toast(msg, type = 'info') {
       const t = document.createElement('div');
@@ -652,6 +690,8 @@
           toast('🎉 تم تفعيل الحساب بنجاح', 'success');
           listenCapData();
           listenFinanceLogs();
+          listenDisputeStatus();
+          listenCaptainTripsHistory();
         }
       });
     }
@@ -673,6 +713,8 @@
         $('portal').style.display = 'none';
         listenCapData();
         listenFinanceLogs();
+        listenDisputeStatus();
+        listenCaptainTripsHistory();
         restoreActiveTripIfAny();
       } catch (e) {
         localStorage.removeItem('cap_session');
@@ -737,6 +779,8 @@
         toast('أهلاً بك يا بطل ⚡', 'success');
         listenCapData();
         listenFinanceLogs();
+        listenDisputeStatus();
+        listenCaptainTripsHistory();
         restoreActiveTripIfAny();
       } catch (e) {
         toast('حدث خطأ: ' + e.message, 'danger');
@@ -774,7 +818,6 @@
       startApprovalWatcher(phone);
     };
 
-    // الاستماع الدقيق لبيانات الكابتن، والتقييم الحقيقي، والرصيد، وفك قفل الديون
     function listenCapData() {
       onSnapshot(doc(db, 'captains', cap.phone), async s => {
         if (!s.exists()) return;
@@ -787,7 +830,6 @@
 
         $('topName').innerText = (cap.name || 'كابتن').split(' ')[0];
         
-        // عرض التقييم التراكمي الفعلي
         const currentRating = Number(cap.rating || 5.0).toFixed(1);
         $('topRating').innerText = currentRating;
         $('stRating').innerText = currentRating;
@@ -803,7 +845,6 @@
         $('proCarModel').innerText = cap.carModel || '--';
         $('proCarPlate').innerText = cap.carPlate || '--';
 
-        // الحظر الفوري الصارم إذا تم القفل من الإدارة أو وصل الدين للحد الأقصى
         if (isBannedByAdmin || isOverDebtLimit) {
           $('debtNoticeCard').style.display = 'flex';
           $('txtLockDesc').innerText = `تم حظر الحساب. مستحقات المنصة بذمتك: ${debt.toLocaleString()} د.ع`;
@@ -849,6 +890,122 @@
       });
     }
 
+    function listenDisputeStatus() {
+      const q = query(collection(db, "disputes"), where("reporterPhone", "==", cap.phone), orderBy("createdAt", "desc"), limit(6));
+      onSnapshot(q, snap => {
+        const box = $('disputeStatusContainer');
+        if (snap.empty) {
+          box.innerHTML = '<div style="text-align:center;font-size:12px;color:var(--muted);padding:6px;">لا توجد بلاغات مسجلة منك حالياً.</div>';
+          return;
+        }
+
+        const items = [];
+        snap.forEach(docSnap => {
+          const d = docSnap.data();
+          const isResolved = d.status === "resolved";
+          items.push(`
+            <div style="background:rgba(255,255,255,0.03);border:1px solid ${isResolved ? 'var(--green)' : 'var(--amber)'};border-radius:14px;padding:10px 12px;font-size:12px;">
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                <b style="color:${isResolved ? 'var(--green)' : 'var(--amber)'}">${isResolved ? '✓ تم حل المشكلة بنجاح من الإدارة' : '⏳ قيد المتابعة من الإدارة'}</b>
+                <small style="color:var(--muted);">${d.createdAt ? new Date(d.createdAt.seconds*1000).toLocaleDateString('ar-IQ') : ''}</small>
+              </div>
+              <div style="color:var(--txt);">نوع البلاغ: <b>${d.issueType}</b></div>
+              <div style="color:var(--muted);font-size:11px;margin-top:2px;">تفاصيلك: ${d.details}</div>
+            </div>
+          `);
+        });
+        box.innerHTML = items.join("");
+      });
+    }
+
+    function listenCaptainTripsHistory() {
+      const q = query(collection(db, "trips"), where("captainPhone", "==", cap.phone), where("status", "==", "completed"), orderBy("completedAt", "desc"), limit(20));
+      onSnapshot(q, snap => {
+        const list = $('captainTripsHistoryList');
+        if (snap.empty) {
+          list.innerHTML = '<div style="text-align:center;font-size:12px;color:var(--muted);padding:10px;">لا توجد مشاوير مكتملة حتى الآن.</div>';
+          return;
+        }
+
+        const rows = [];
+        snap.forEach(d => {
+          const t = d.data();
+          const tId = d.id;
+          const fare = Number(t.fare || 1500);
+          const cut = Number(t.commissionCut || (fare * 0.10));
+          const net = fare - cut;
+          const dateStr = t.completedAt ? new Date(t.completedAt.seconds * 1000).toLocaleString('ar-IQ') : '--';
+
+          rows.push(`
+            <div class="history-card">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <code style="color:var(--cyan);font-weight:900;font-size:12.5px;">#${tId.substring(0,8)}</code>
+                <span style="background:rgba(16,185,129,0.15);color:var(--green);padding:3px 8px;border-radius:8px;font-size:11px;font-weight:900;">مكتملة ✓</span>
+              </div>
+              <div style="font-size:12px;display:flex;flex-direction:column;gap:3px;margin:3px 0;">
+                <div>الراكب: <b>${t.userName || 'زبون'}</b> (${t.userPhone || ''})</div>
+                <div>📍 من: <span style="color:var(--muted);">${t.pickup?.address || 'نقطة الانطلاق'}</span></div>
+                <div>🏁 إلى: <span style="color:var(--muted);">${t.dropoff?.address || 'الوجهة'}</span></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--stroke);padding-top:8px;font-size:12px;">
+                <div>الأجرة: <b style="color:var(--green);">${fare.toLocaleString()} د.ع</b> (صافي: ${net.toLocaleString()})</div>
+                <button class="btn-ghost" style="padding:4px 10px;font-size:11.5px;" onclick="printTripPDF('${tId}', '${t.userName||"الزبون"}', '${t.userPhone||""}', '${t.pickup?.address||""}', '${t.dropoff?.address||""}', ${fare}, ${cut}, '${dateStr}')">📄 طباعة وتحميل PDF</button>
+              </div>
+            </div>
+          `);
+        });
+        list.innerHTML = rows.join("");
+      });
+    }
+
+    window.printTripPDF = (tId, userName, userPhone, pickup, dropoff, fare, cut, dateStr) => {
+      const net = fare - cut;
+      const printWin = window.open('', '_blank', 'width=800,height=900');
+      printWin.document.write(`
+        <!DOCTYPE html>
+        <html lang="ar" dir="rtl">
+        <head>
+          <meta charset="UTF-8">
+          <title>فاتورة رحلة #${tId.substring(0,8)}</title>
+          <style>
+            body{font-family:'Cairo',sans-serif;padding:30px;color:#1e293b;line-height:1.6}
+            .ticket{border:2px dashed #0284c7;border-radius:18px;padding:24px;max-width:550px;margin:auto}
+            .header{text-align:center;border-bottom:2px solid #e2e8f0;padding-bottom:12px;margin-bottom:16px}
+            .header h2{margin:0;color:#0284c7}
+            .row{display:flex;justify-content:space-between;margin-bottom:10px;font-size:14px}
+            .total-box{background:#f8fafc;border-radius:12px;padding:12px;margin-top:14px;border:1px solid #cbd5e1}
+          </style>
+        </head>
+        <body>
+          <div class="ticket">
+            <div class="header">
+              <h2>وصلني بطريقك 🚕</h2>
+              <small>إشعار إنجاز مشوار رسمي معتمد</small>
+            </div>
+            <div class="row"><span>رقم الرحلة المرجعي:</span><b>#${tId}</b></div>
+            <div class="row"><span>تاريخ ووقت الرحلة:</span><b>${dateStr}</b></div>
+            <div class="row"><span>الكابتن المنفذ:</span><b>${cap.name} (${cap.phone})</b></div>
+            <div class="row"><span>مركبة الكابتن:</span><b>${cap.carModel || ''} - ${cap.carPlate || ''}</b></div>
+            <div class="row"><span>الزبون:</span><b>${userName} (${userPhone})</b></div>
+            <hr style="border:none;border-top:1px dashed #cbd5e1;margin:12px 0;">
+            <div class="row"><span>نقطة الانطلاق:</span><b>${pickup}</b></div>
+            <div class="row"><span>نقطة الوصول:</span><b>${dropoff}</b></div>
+            <div class="total-box">
+              <div class="row"><span>إجمالي الأجرة المستلمة:</span><b style="color:#059669;font-size:16px;">${fare.toLocaleString()} د.ع</b></div>
+              <div class="row"><span>عمولة المنصة المقتطعة (10%):</span><b>${cut.toLocaleString()} د.ع</b></div>
+              <div class="row"><span>صافي دخل الكابتن:</span><b style="color:#0284c7;font-size:16px;">${net.toLocaleString()} د.ع</b></div>
+            </div>
+            <p style="text-align:center;font-size:11px;color:#64748b;margin-top:18px;">شكراً لخدمتكم مع وصلني بطريقك - نظام القيادة الذكي</p>
+          </div>
+          <script>
+            window.onload = function(){ window.print(); }
+          <\/script>
+        </body>
+        </html>
+      `);
+      printWin.document.close();
+    };
+
     function startBroadcastingLocation() {
       if (navigator.geolocation) {
         gpsWatchId = navigator.geolocation.watchPosition(async (pos) => {
@@ -892,7 +1049,6 @@
       }
     };
 
-    // الاستماع الفوري للطلبات الجديدة في الرادار مع التأكد اللحظي من عدم الحظر
     function listenOrders(){
       if(ordersUn) return;
       const q = query(collection(db, 'trips'), where('status', '==', 'searching'));
@@ -902,34 +1058,73 @@
           return;
         }
 
-        snap.docChanges().forEach(ch => {
+        snap.docChanges().forEach(async ch => {
           const t = ch.doc.data();
           t.id = ch.doc.id;
+
           if (ch.type === 'added' && isOnline && !tripId && !orderData) {
             showOrderCard(t);
           }
+
           if (ch.type === 'removed' && orderData && orderData.id === t.id) {
-            toast('قام الزبون بإلغاء الطلب', 'warning');
+            try {
+              const latestSnap = await getDoc(doc(db, 'trips', t.id));
+              if (latestSnap.exists()) {
+                const liveData = latestSnap.data();
+                if (liveData.status === 'accepted') {
+                  toast('⚡ عذراً، تم قبول المشوار من قِبل كابتن آخر', 'info');
+                } else if (liveData.status === 'cancelled') {
+                  toast('✕ قام الزبون بإلغاء طلب المشوار', 'warning');
+                } else {
+                  toast('تم سحب المشوار من الرادار', 'info');
+                }
+              }
+            } catch (e) {
+              toast('لم يعد المشوار متاحاً', 'info');
+            }
             declineOrder();
           }
         });
       });
     }
 
-    function showOrderCard(t) {
+    async function showOrderCard(t) {
       orderData = t;
       wipe();
 
       const calculatedFare = Number(t.fare || t.finalPrice || 1500);
       $('oFare').innerText = `${calculatedFare.toLocaleString()} د.ع`;
-      $('oPickup').innerText = t.pickup?.address || 'موقع محدد على الخريطة';
-      $('oDrop').innerText = t.dropoff?.address || 'موقع محدد على الخريطة';
-
-      if (t.pickup?.lat && t.pickup?.lng) {
-        L.circleMarker([t.pickup.lat, t.pickup.lng], { color: '#fbbf24', radius: 8 }).addTo(layers);
+      
+      const rideCategory = t.category || "توفير";
+      const catBadge = $('oCategoryBadge');
+      if(catBadge) {
+        catBadge.innerText = rideCategory;
+        if(rideCategory.includes('بَلس') || rideCategory.includes('بلس')) {
+          catBadge.innerText = 'بَلس ⭐';
+          catBadge.style.color = 'var(--amber)';
+          catBadge.style.background = 'rgba(251,191,36,0.18)';
+          catBadge.style.borderColor = 'rgba(251,191,36,0.35)';
+        } else {
+          catBadge.innerText = 'توفير 🚗';
+          catBadge.style.color = 'var(--cyan)';
+          catBadge.style.background = 'rgba(34,211,238,0.18)';
+          catBadge.style.borderColor = 'var(--stroke2)';
+        }
       }
-      if (t.dropoff?.lat && t.dropoff?.lng) {
-        L.circleMarker([t.dropoff.lat, t.dropoff.lng], { color: '#8b5cf6', radius: 8 }).addTo(layers);
+
+      $('oPickup').innerText = t.pickup?.address || 'موقع صعود الراكب';
+      $('oDrop').innerText = t.dropoff?.address || 'الوجهة المقصودة';
+
+      if (t.pickup?.lat && t.pickup?.lng && t.dropoff?.lat && t.dropoff?.lng) {
+        L.marker([t.pickup.lat, t.pickup.lng], { 
+          icon: createLocationPin("موقع صعود الراكب", "#ea580c", "📍") 
+        }).addTo(layers);
+
+        L.marker([t.dropoff.lat, t.dropoff.lng], { 
+          icon: createLocationPin("الوجهة المقصودة", "#1557ff", "🏁") 
+        }).addTo(layers);
+
+        await drawRoadRoute(t.pickup, t.dropoff, "#1557ff");
       }
 
       $('orderCard').style.display = 'flex';
@@ -995,7 +1190,7 @@
       }
     };
 
-    function setupTripUI(data) {
+    async function setupTripUI(data) {
       $('orderCard').style.display = 'none';
       $('tripCard').style.display = 'flex';
       $('paxName').innerText = data.userName || "الزبون";
@@ -1005,23 +1200,60 @@
       const fareNum = Number(data.fare || data.finalPrice || 1500);
       $('tFare').innerText = `${fareNum.toLocaleString()} د.ع`;
 
+      const rideCat = data.category || "توفير";
+      const tBadge = $('tCategoryBadge');
+      if(tBadge) {
+        tBadge.innerText = rideCat.includes('بَلس') || rideCat.includes('بلس') ? 'بَلس ⭐' : 'توفير 🚗';
+        tBadge.style.color = rideCat.includes('بَلس') || rideCat.includes('بلس') ? 'var(--amber)' : 'var(--cyan)';
+      }
+
+      wipe();
+
       if (data.status === "accepted") {
         phase = 1;
         $('phaseBadge').innerText = '🧭 في الطريق للزبون';
         $('btnPhase').innerText = 'وصلت لموقع الزبون 📍';
+
+        if (data.pickup?.lat && data.pickup?.lng) {
+          L.marker([data.pickup.lat, data.pickup.lng], { 
+            icon: createLocationPin("موقع صعود الراكب", "#ea580c", "📍") 
+          }).addTo(layers);
+
+          if (currentCoords) {
+            await drawRoadRoute(currentCoords, data.pickup, "#1557ff");
+          } else {
+            map.panTo([data.pickup.lat, data.pickup.lng]);
+          }
+        }
+
       } else if (data.status === "arrived") {
         phase = 2;
         $('phaseBadge').innerText = '📍 في انتظار الراكب';
         $('btnPhase').innerText = 'بدء المشوار نحو الوجهة 🚀';
+
+        if (data.pickup?.lat && data.pickup?.lng) {
+          L.marker([data.pickup.lat, data.pickup.lng], { 
+            icon: createLocationPin("موقع صعود الراكب", "#ea580c", "📍") 
+          }).addTo(layers);
+          map.panTo([data.pickup.lat, data.pickup.lng]);
+        }
+
       } else if (data.status === "on_way") {
         phase = 3;
         $('phaseBadge').innerText = '🚀 المشوار جارٍ للوجهة';
         $('btnPhase').innerText = 'إنهاء المشوار واستلام الأجرة 🏁';
-      }
 
-      wipe();
-      if(data.pickup?.lat && data.pickup?.lng){
-        L.circleMarker([data.pickup.lat, data.pickup.lng], { color: '#fbbf24', radius: 9 }).addTo(layers);
+        if (data.pickup?.lat && data.pickup?.lng && data.dropoff?.lat && data.dropoff?.lng) {
+          L.marker([data.pickup.lat, data.pickup.lng], { 
+            icon: createLocationPin("موقع صعود الراكب", "#ea580c", "📍") 
+          }).addTo(layers);
+
+          L.marker([data.dropoff.lat, data.dropoff.lng], { 
+            icon: createLocationPin("الوجهة المقصودة", "#1557ff", "🏁") 
+          }).addTo(layers);
+
+          await drawRoadRoute(data.pickup, data.dropoff, "#10b981");
+        }
       }
     }
 
@@ -1105,6 +1337,9 @@
           wipe();
           if (orderData.pickup?.lat && orderData.pickup?.lng) {
             update3DCar(orderData.pickup.lat, orderData.pickup.lng, 90);
+            L.marker([orderData.pickup.lat, orderData.pickup.lng], { 
+              icon: createLocationPin("موقع صعود الراكب", "#ea580c", "📍") 
+            }).addTo(layers);
             map.panTo([orderData.pickup.lat, orderData.pickup.lng]);
           }
           await updateDoc(doc(db, 'trips', tripId), { status: 'arrived', arrivedAt: serverTimestamp() });
@@ -1115,8 +1350,16 @@
 
         } else if (phase === 2) {
           wipe();
-          if (orderData.dropoff?.lat && orderData.dropoff?.lng) {
-            L.circleMarker([orderData.dropoff.lat, orderData.dropoff.lng], { color: '#8b5cf6', radius: 9 }).addTo(layers);
+          if (orderData.pickup?.lat && orderData.pickup?.lng && orderData.dropoff?.lat && orderData.dropoff?.lng) {
+            L.marker([orderData.pickup.lat, orderData.pickup.lng], { 
+              icon: createLocationPin("موقع صعود الراكب", "#ea580c", "📍") 
+            }).addTo(layers);
+
+            L.marker([orderData.dropoff.lat, orderData.dropoff.lng], { 
+              icon: createLocationPin("الوجهة المقصودة", "#1557ff", "🏁") 
+            }).addTo(layers);
+
+            await drawRoadRoute(orderData.pickup, orderData.dropoff, "#10b981");
           }
           await updateDoc(doc(db, 'trips', tripId), { status: 'on_way', startedAt: serverTimestamp() });
           phase = 3;
@@ -1194,11 +1437,13 @@
 
     window.sendCapChatMessage = async () => {
       const inp = $('inCapChatMsg');
-      if (!inp.value.trim() || !tripId) return;
+      const text = inp.value.trim();
+      if (!text || !tripId) return;
+
       await addDoc(collection(db, "trips", tripId, "messages"), {
         senderPhone: cap.phone,
         senderName: cap.name || "الكابتن",
-        text: inp.value.trim(),
+        text: text,
         timestamp: serverTimestamp()
       });
       inp.value = "";
@@ -1277,7 +1522,6 @@
     };
   </script>
 
-  <!-- محرك PWA المدمج لتشغيل التطبيق كأنه مثبت من المتجر -->
   <script>
     if ('serviceWorker' in navigator) {
       const swCode = `
