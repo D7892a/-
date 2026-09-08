@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#1557ff">
+  <title>وصلني بطريقك ⚡ الكابتن</title>
+
+  <!-- إعدادات تطبيق الهاتف المدمج (PWA) -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="كابتن وصلني">
+  <link rel="apple-touch-icon" href="logo.png">
+  <link rel="icon" type="image/png" href="logo.png">
+
+  <!-- توليد المانفيست تلقائياً لتثبيت التطبيق على الشاشة -->
+  <script>
+    const manifestData = {
+      name: "وصلني بطريقك - الكابتن",
+      short_name: "كابتن وصلني",
+      description: "لوحة القيادة المركزية للكابتن",
+      start_url: window.location.href,
+      display: "standalone",
+      background_color: "#060a12",
+      theme_color: "#1557ff",
+      orientation: "portrait",
+      icons: [
+        { src: "logo.png", sizes: "192x192", type: "image/png" },
+        { src: "logo.png", sizes: "512x512", type: "image/png" }
+      ]
+    };
+    const stringManifest = JSON.stringify(manifestData);
+    const blobManifest = new Blob([stringManifest], { type: 'application/json' });
+    const manifestURL = URL.createObjectURL(blobManifest);
+    const linkTag = document.createElement('link');
+    linkTag.rel = 'manifest';
+    linkTag.href = manifestURL;
+    document.head.appendChild(linkTag);
+  </script>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900;950&display=swap');
+    :root{
+      --bg:#060a12; --bg2:#0b1325; --glass:rgba(18,29,49,0.75); --glass2:rgba(255,255,255,0.06);
+      --stroke:rgba(255,255,255,0.1); --stroke2:rgba(34,211,238,0.35);
+      --txt:#f8fafc; --muted:#8496b3;
+      --cyan:#22d3ee; --violet:#8b5cf6; --pink:#ec4899; --amber:#fbbf24; --green:#10b981; --red:#ef4444; --blue:#1557ff;
+      --grad:linear-gradient(135deg,#22d3ee,#8b5cf6 55%,#ec4899);
+      --grad-green:linear-gradient(135deg,#10b981,#22d3ee);
+      --grad-blue:linear-gradient(135deg,#1557ff,#002ca8);
+      --r:24px; --tr:all .28s cubic-bezier(.34,1.3,.5,1);
+    }
+    *{box-sizing:border-box;margin:0;padding:0;font-family:'Cairo',sans-serif;-webkit-tap-highlight-color:transparent;user-select:none}
+    body{background:var(--bg);overflow:hidden;height:100vh;width:100vw;color:var(--txt)}
+
+    .mesh-bg{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+    .mesh-bg::before{content:"";position:absolute;inset:-50%;background:
+      radial-gradient(circle at 15% 15%,rgba(34,211,238,.16),transparent 40%),
+      radial-gradient(circle at 85% 85%,rgba(139,92,246,.16),transparent 40%),
+      radial-gradient(circle at 50% 50%,rgba(236,72,153,.1),transparent 50%);
+      animation:meshFloat 20s ease-in-out infinite alternate}
+    @keyframes meshFloat{0%{transform:translate(0,0) scale(1)}100%{transform:translate(3%,-3%) scale(1.08)}}
+
+    .glass{background:var(--glass);border:1px solid var(--stroke);border-radius:var(--r);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);box-shadow:0 20px 50px rgba(0,0,0,0.45)}
+    .btn-grad{background:var(--grad-blue);color:#fff;border:none;padding:15px 20px;border-radius:18px;font-size:15px;font-weight:900;cursor:pointer;transition:var(--tr);width:100%;box-shadow:0 10px 30px rgba(21,87,255,.4)}
+    .btn-grad:active{transform:scale(.97)}
+    .btn-ghost{background:var(--glass2);border:1px solid var(--stroke);color:var(--txt);padding:13px 18px;border-radius:16px;font-size:13px;font-weight:800;cursor:pointer;transition:var(--tr)}
+    .btn-ghost:hover{background:rgba(255,255,255,0.12);border-color:var(--cyan)}
+
+    #toastContainer{position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;width:100%;max-width:380px;padding:0 16px;pointer-events:none}
+    .toast{background:rgba(14,23,38,0.96);border:1px solid var(--stroke2);border-radius:18px;padding:13px 18px;font-size:13px;font-weight:900;color:var(--txt);backdrop-filter:blur(16px);box-shadow:0 15px 40px rgba(0,0,0,.6);display:flex;align-items:center;gap:10px}
+    .toast.success{border-right:4px solid var(--green)} .toast.danger{border-right:4px solid var(--red)}
+    .toast.warning{border-right:4px solid var(--amber)} .toast.info{border-right:4px solid var(--cyan)}
+
+    .portal{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(4,7,15,0.88);backdrop-filter:blur(24px)}
+    .portal-card{width:100%;max-width:440px;max-height:94vh;overflow-y:auto;padding:26px 20px;}
+    .logo-orbit{width:82px;height:82px;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);border-radius:26px;box-shadow:0 12px 35px rgba(34,211,238,.35);overflow:hidden;}
+    .logo-orbit img{width:100%;height:100%;object-fit:cover;}
+    .portal h1{text-align:center;font-size:24px;font-weight:950;background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+    .portal .sub{text-align:center;font-size:12.5px;color:var(--muted);margin:4px 0 16px;font-weight:800}
+    .tabs-switch{display:flex;background:rgba(255,255,255,.05);border-radius:18px;padding:5px;margin-bottom:18px;gap:5px;border:1px solid var(--stroke)}
+    .tabs-switch button{flex:1;padding:11px;border:none;background:transparent;border-radius:14px;font-size:13.5px;font-weight:900;color:var(--muted);cursor:pointer;transition:all .2s}
+    .tabs-switch button.active{background:var(--grad);color:#fff;box-shadow:0 6px 20px rgba(139,92,246,.4)}
+
+    .inp-w{margin-bottom:14px}
+    .inp-w label{display:block;font-size:11.5px;font-weight:900;color:var(--muted);margin-bottom:6px}
+    .inp{position:relative}
+    .inp input{width:100%;padding:14px 44px 14px 16px;background:rgba(255,255,255,.05);border:1.5px solid var(--stroke);border-radius:16px;font-size:14px;color:var(--txt);font-weight:800;transition:all .2s}
+    .inp input:focus{border-color:var(--cyan);box-shadow:0 0 0 4px rgba(34,211,238,.15)}
+    .inp .ic{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:16px;opacity:.7}
+    .inp .eye{position:absolute;left:12px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:17px;cursor:pointer;opacity:.7}
+
+    .doc-group{background:rgba(255,255,255,.02);border:1px solid var(--stroke);border-radius:18px;padding:12px;margin-bottom:12px}
+    .doc-group-title{font-size:12px;font-weight:900;color:var(--cyan);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+    .upgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .uptile{border:1.5px dashed var(--stroke);border-radius:15px;padding:12px 6px;text-align:center;cursor:pointer;font-size:11px;font-weight:900;color:var(--muted);display:flex;flex-direction:column;gap:4px;align-items:center;background:rgba(255,255,255,.02);min-height:74px;justify-content:center;position:relative;transition:all .2s}
+    .uptile:hover{border-color:var(--cyan);color:var(--cyan)}
+    .file-input-overlay{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;z-index:5}
+
+    .pending-box{display:none;background:rgba(251,191,36,.1);border:1.5px solid rgba(251,191,36,.4);color:var(--amber);border-radius:24px;padding:26px 18px;font-size:13.5px;font-weight:900;text-align:center;line-height:1.8}
+    .pulse-ring{width:64px;height:64px;border-radius:50%;background:rgba(251,191,36,.15);border:2px solid var(--amber);display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px;animation:pRing 2s infinite}
+    @keyframes pRing{0%{transform:scale(.95);box-shadow:0 0 0 0 rgba(251,191,36,.4)}70%{transform:scale(1.05);box-shadow:0 0 0 16px transparent}100%{transform:scale(.95)}}
+
+    .page{position:absolute;inset:0;bottom:76px;overflow-y:auto;display:none;z-index:1;padding-bottom:24px}
+    .page.on{display:block}
+    #map{height:100%;width:100%;z-index:1}
+    .leaflet-container{background:#f1f5f9}
+
+    .bnav{position:fixed;bottom:14px;left:14px;right:14px;height:68px;z-index:3000;display:flex;border-radius:24px;background:rgba(10,16,28,0.92);border:1px solid var(--stroke);backdrop-filter:blur(22px);box-shadow:0 15px 45px rgba(0,0,0,.6);overflow:hidden}
+    .bnav .nitem{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--muted);cursor:pointer;font-size:11px;font-weight:900;transition:all .2s}
+    .bnav .nitem.on{color:#fff}
+    .bnav .nitem.on::before{content:"";position:absolute;top:0;width:38px;height:3px;border-radius:0 0 6px 6px;background:var(--grad)}
+
+    .radar-top{position:absolute;top:16px;left:16px;right:16px;z-index:600;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+    .switch-wrap{display:flex;align-items:center;gap:10px;background:rgba(10,16,28,0.88);border:1px solid var(--stroke);border-radius:40px;padding:10px 18px;backdrop-filter:blur(16px);cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+    .switch-wrap.on{border-color:rgba(52,211,153,.5)}
+    .switch-wrap.on .lbl{color:var(--green)}
+    .pulse-dot{width:9px;height:9px;border-radius:50%;background:var(--red)}
+    .switch-wrap.on .pulse-dot{background:var(--green);box-shadow:0 0 10px var(--green)}
+
+    /* بطاقة القفل الصارم من الإدارة */
+    .debt-lock-card{
+      position:absolute;top:76px;left:16px;right:16px;z-index:700;
+      background:rgba(239,68,68,0.25);border:2px solid var(--red);border-radius:20px;padding:18px;
+      backdrop-filter:blur(20px);display:none;flex-direction:column;gap:10px;box-shadow:0 15px 45px rgba(239,68,68,0.4)
+    }
+    
+    .order-card, .trip-card{
+      position:absolute;bottom:0;left:0;right:0;z-index:1200;padding:24px 20px 28px;display:none;
+      flex-direction:column;gap:15px;background:rgba(10,16,28,0.96);border-top:1px solid var(--stroke);border-radius:32px 32px 0 0;
+      backdrop-filter:blur(25px);box-shadow:0 -15px 50px rgba(0,0,0,.7)
+    }
+    .fare-big{font-size:32px;font-weight:950;background:var(--grad-green);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+
+    .wrap{padding:20px 16px;max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+    .sec-title{font-size:19px;font-weight:950;display:flex;align-items:center;gap:8px}
+    
+    .stat-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .stat-card-pro{background:var(--glass);border:1px solid var(--stroke);border-radius:20px;padding:16px 14px;text-align:center;backdrop-filter:blur(20px);box-shadow:0 10px 30px rgba(0,0,0,.3)}
+    .stat-card-pro .val{font-size:22px;font-weight:950;margin:4px 0}
+    .stat-card-pro .lbl{font-size:11px;color:var(--muted);font-weight:800}
+
+    .hero-profile{padding:20px;display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,rgba(34,211,238,.12),rgba(139,92,246,.08));border:1px solid var(--stroke2);border-radius:26px}
+    .hero-avatar{width:64px;height:64px;border-radius:22px;object-fit:cover;border:2.5px solid var(--cyan);background:#0f172a}
+
+    .modal{position:fixed;inset:0;z-index:5000;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(4,7,15,0.85);backdrop-filter:blur(16px)}
+    .modal.on{display:flex}
+    .modal-card{width:100%;max-width:420px;padding:26px 22px;background:rgba(14,23,38,0.98);border:1px solid var(--stroke);border-radius:28px;color:#fff;box-shadow:0 30px 70px rgba(0,0,0,.7)}
+  </style>
+</head>
+<body>
+  <div class="mesh-bg"></div>
+  <div id="toastContainer"></div>
+
+  <!-- بوابة تسجيل الدخول والتسجيل بالخطوات مع الوثائق الأربعة بوجه وظهر -->
+  <div class="portal" id="portal">
+    <div class="portal-card glass">
+      <div class="logo-orbit">
+        <img src="logo.png" alt="وصلني" onerror="this.outerHTML='🚕'">
+      </div>
+      <h1>وصلني بطريقك</h1>
+      <p class="sub">لوحة القيادة المركزية للكابتن ⚡</p>
+      
+      <div class="tabs-switch" id="authTabsNav">
+        <button class="active" id="tabLogin" onclick="authMode('login')">تسجيل الدخول</button>
+        <button id="tabReg" onclick="authMode('reg')">حساب جديد</button>
+      </div>
+
+      <!-- شاشة الانتظار اللحظية -->
+      <div class="pending-box" id="pendingBox">
+        <div class="pulse-ring">⏳</div>
+        <h3 style="font-size:18px;margin-bottom:6px;color:#fff;">طلبك قيد التدقيق لدى الإدارة</h3>
+        <p style="font-size:12px;color:var(--muted);line-height:1.7;">تم استلام مستمسكاتك كاملة (وجه وظهر). يتم مراجعتها الآن وسيتم فتح الواجهة لك فوراً عند الاعتماد دون الحاجة لتحديث الصفحة.</p>
+        <button class="btn-ghost" style="margin-top:16px;width:100%;" onclick="logout()">تسجيل خروج أو تعديل الطلب</button>
+      </div>
+
+      <div id="paneLogin">
+        <div class="inp-w"><label>رقم الهاتف</label>
+          <div class="inp"><span class="ic">📱</span><input type="tel" id="loginPhone" placeholder="07XXXXXXXXX" maxlength="11"></div>
+        </div>
+        <div class="inp-w"><label>كلمة السر</label>
+          <div class="inp"><span class="ic">🔒</span><input type="password" id="loginPass" placeholder="••••••••"><button class="eye" onclick="togglePass('loginPass',this)">👁️</button></div>
+        </div>
+        <button class="btn-grad" id="btnSubmitLogin" onclick="doLogin()">تسجيل الدخول</button>
+      </div>
+
+      <div id="paneReg" style="display:none">
+        <!-- الخطوة 1: البيانات الشخصية -->
+        <div id="rs1" style="display:flex;flex-direction:column;gap:12px;">
+          <div class="inp-w" style="margin:0"><label>الاسم الكامل (الثلاثي)</label><div class="inp"><input type="text" id="regName" placeholder="الاسم الثلاثي"></div></div>
+          <div class="inp-w" style="margin:0"><label>رقم الهاتف</label><div class="inp"><input type="tel" id="regPhone" placeholder="07XXXXXXXXX" maxlength="11"></div></div>
+          <div class="inp-w" style="margin:0"><label>كلمة السر</label><div class="inp"><input type="password" id="regPass" placeholder="6 خانات أو أكثر"></div></div>
+          <div class="inp-w" style="margin:0"><label>تأكيد كلمة السر</label><div class="inp"><input type="password" id="regPass2" placeholder="أعد إدخال كلمة السر"></div></div>
+          <button class="btn-grad" onclick="goStep(2)">التالي: بيانات المركبة ←</button>
+        </div>
+
+        <!-- الخطوة 2: بيانات المركبة -->
+        <div id="rs2" style="display:none;flex-direction:column;gap:12px;">
+          <div class="inp-w" style="margin:0"><label>نوع وموديل السيارة</label><div class="inp"><input type="text" id="regCar" placeholder="هيونداي النترا 2022"></div></div>
+          <div class="inp-w" style="margin:0"><label>رقم اللوحة المرورية</label><div class="inp"><input type="text" id="regPlate" placeholder="بغداد 12345"></div></div>
+          <div style="display:flex;gap:10px;">
+            <button class="btn-ghost" onclick="goStep(1)">→ رجوع</button>
+            <button class="btn-grad" style="flex:1" onclick="goStep(3)">التالي: رفع المستمسكات الـ 4 ←</button>
+          </div>
+        </div>
+
+        <!-- الخطوة 3: المستمسكات الأربعة بوجه وظهر (8 صور) -->
+        <div id="rs3" style="display:none;flex-direction:column;gap:10px;">
+          <div class="inp-w" style="margin-bottom:6px"><label>الصورة الشخصية للكابتن</label>
+            <div class="uptile" id="tAva"><span>📷</span><span>صورة شخصية واضحة</span><input type="file" accept="image/*" class="file-input-overlay" onchange="pickDoc(this,'avatar','tAva')"></div>
+          </div>
+
+          <div class="doc-group">
+            <div class="doc-group-title"><span>📄</span> سنوية المركبة</div>
+            <div class="upgrid">
+              <div class="uptile" id="tS1"><span>📑 وجه</span><input type="file" accept="image/*" class="file-input-overlay" onchange="pickDoc(this,'sanawaFront','tS1')"></div>
+              <div class="uptile" id="tS2"><span>📑 ظهر</span><input type="file" accept="image/*" class="file-input-overlay" onchange="pickDoc(this,'sanawaBack','tS2')"></div>
+            </div>
+          </div>
+
+          <div class="doc-group">
+            <div class="doc-group-title"><span>🪪</span> إجازة السوق الرسمية</div>
+            <div class="upgrid">
+              <div class="uptile" id="tLic1"><span>🪪 وجه</span><input type="file" accept="image/*" class="file-input-overlay" onchange="pickDoc(this,'licenseFront','tLic1')"></div>
+              <div class="uptile" id="tLic2"><span>🪪 ظهر</span><input type="file" accept="image/*" class="file-input-overlay" onchange="pickDoc(this,'licenseBack','tLic2')"></div>
+            </div>
+          </div>
+
+          <div class="doc-group">
+            <div class="doc-group-title"><span>🆔</span> البطاقة الوطنية الموحدة</div>
+            <div class="upgrid">
+              <div class="uptile" id="tId1"><span>🆔 وجه</span><input type="file" accept="image/*" class="file-input-overlay" onchange="pickDoc(this,'idFront','tId1')"></div>
+              <div class="uptile" id="tId2"><span>🆔 ظهر</span><input type="file" accept="image/*" class="file-input-overlay" onchange="pickDoc(this,'idBack','tId2')"></div>
+            </div>
+          </div>
+
+          <div class="doc-group">
+            <div class="doc-group-title"><span>🏠</span> بطاقة السكن</div>
+            <div class="upgrid">
+              <div class="uptile" id="tRes1"><span>🏠 وجه</span><input type="file" accept="image/*" class="file-input-overlay" onchange="pickDoc(this,'residenceFront','tRes1')"></div>
+              <div class="uptile" id="tRes2"><span>🏠 ظهر</span><input type="file" accept="image/*" class="file-input-overlay" onchange="pickDoc(this,'residenceBack','tRes2')"></div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-top:6px;">
+            <button class="btn-ghost" onclick="goStep(2)">→ رجوع</button>
+            <button class="btn-grad" style="flex:1" id="btnSubmitReg" onclick="doRegister()">إرسال وتثبيت الحساب ✓</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 1. شاشة الرادار -->
+  <div class="page on" id="pgRadar">
+    <div id="map"></div>
+    
+    <div class="radar-top">
+      <div class="switch-wrap" id="onlineWrap" onclick="toggleOnline()">
+        <div class="pulse-dot"></div>
+        <span class="lbl" id="lblOnline">غير متصل</span>
+      </div>
+      <div class="glass" style="padding:9px 16px;display:flex;align-items:center;gap:8px;border-radius:30px;">
+        <span id="topName" style="font-weight:900;">كابتن</span>
+        <span style="color:var(--amber)">⭐<b id="topRating">5.0</b></span>
+      </div>
+    </div>
+
+    <!-- بطاقة قفل الديون والحظر الإداري الفوري -->
+    <div class="debt-lock-card" id="debtNoticeCard">
+      <h4 style="color:var(--red);font-weight:950;font-size:16px;" id="txtLockTitle">🔒 الحساب مقفل أو محظور من الإدارة</h4>
+      <p style="font-size:12.5px;line-height:1.7;" id="txtLockDesc">تم تقييد وصولك للرادار لوجود مستحقات متأخرة تجاوزت 10,000 د.ع أو حظر إداري مباشر. يرجى مراجعة المحفظة لتسوية الحساب.</p>
+      <button class="btn-ghost" style="border-color:var(--red);color:#fff;background:rgba(239,68,68,.35)" onclick="nav('pgEarn', document.querySelectorAll('.nitem')[1])">💳 تسديد الديون / شحن المحفظة الآن</button>
+    </div>
+
+    <!-- كارت الطلب الوارد -->
+    <div class="order-card" id="orderCard">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:11px;color:var(--muted);font-weight:900">أجرة المشوار</div>
+          <div class="fare-big" id="oFare">1,500 د.ع</div>
+        </div>
+        <div style="font-size:25px;font-weight:950;color:var(--cyan)" id="oTimer">15</div>
+      </div>
+      <div class="glass" style="padding:14px;display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:bold;">
+        <div>📍 من: <span id="oPickup">—</span></div>
+        <div>🏁 إلى: <span id="oDrop">—</span></div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn-ghost" style="flex:1" onclick="declineOrder()">تخطي ✕</button>
+        <button class="btn-grad" style="flex:2" onclick="acceptOrder()">قبول المشوار ⚡</button>
+      </div>
+    </div>
+
+    <!-- كارت المشوار الجاري -->
+    <div class="trip-card" id="tripCard">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="color:var(--cyan);font-weight:950;" id="phaseBadge">🧭 في الطريق للزبون</span>
+        <div style="font-size:19px;font-weight:950;color:var(--green)" id="tFare">0 د.ع</div>
+      </div>
+
+      <div class="glass" style="padding:13px;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:15px;font-weight:950" id="paxName">الراكب</div>
+          <div style="font-size:12px;color:var(--cyan);font-weight:800;" id="paxPhone">—</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-ghost" style="padding:9px 12px;font-size:16px;" onclick="openCaptainChat()">💬</button>
+          <a id="callPax" href="#" class="btn-ghost" style="font-size:16px;padding:9px 12px;text-decoration:none;">📞</a>
+        </div>
+      </div>
+
+      <!-- أزرار الملاحة الخارجية (Waze & Google Maps) -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button class="btn-ghost" style="background:rgba(34,211,238,0.12);border-color:var(--cyan);color:#fff;" onclick="openNavigationApp('waze')">
+          🚗 ملاحة Waze
+        </button>
+        <button class="btn-ghost" style="background:rgba(16,185,129,0.12);border-color:var(--green);color:#fff;" onclick="openNavigationApp('google')">
+          🗺️ خرائط Google
+        </button>
+      </div>
+
+      <div style="display:flex;gap:8px;">
+        <button class="btn-ghost" style="flex:1;background:rgba(239,68,68,0.15);border-color:var(--red);color:#f87171;" onclick="openCaptainCancelModal()">✕ إلغاء الرحلة</button>
+        <button class="btn-ghost" style="flex:1;" onclick="openDisputeModal()">🚨 بلاغ طارئ</button>
+        <button class="btn-grad" style="flex:2;" id="btnPhase" onclick="nextPhase()">وصلت لموقع الزبون 📍</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. شاشة المحفظة والأرباح المركزية -->
+  <div class="page" id="pgEarn">
+    <div class="wrap">
+      <div class="sec-title">💰 المحفظة والأرباح المركزية</div>
+
+      <!-- رصيد المحفظة المشحون المتاح -->
+      <div class="glass" style="padding:22px;background:linear-gradient(135deg,rgba(34,211,238,0.15),rgba(21,87,255,0.18));border-color:var(--cyan);">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:12px;color:var(--cyan);font-weight:900;">💳 رصيد المحفظة المشحون المتاح</span>
+          <span style="font-size:10px;padding:3px 8px;border-radius:8px;background:rgba(34,211,238,0.2);color:#fff;font-weight:bold;">جاهز للاستخدام</span>
+        </div>
+        <div style="font-size:35px;font-weight:950;color:#fff;margin-top:6px;" id="lblWalletBalance">0 د.ع</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">تُخصم منه عمولات المشاوير تلقائياً وتمنع قفل الحساب.</div>
+      </div>
+
+      <!-- صافي دخل المشاوير ومستحقات المنصة -->
+      <div class="glass" style="padding:22px;">
+        <div style="font-size:12px;color:var(--muted);font-weight:900;">صافي دخل المشاوير المستلم نقدياً من الركاب</div>
+        <div style="font-size:30px;font-weight:950;color:var(--green);margin-top:4px;" id="earnTotal">0 د.ع</div>
+        
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--stroke);display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <span style="font-size:12.5px;color:var(--muted);display:block;">مستحقات المنصة (ديون العمولة 10%):</span>
+            <small style="font-size:10.5px;color:var(--red);">* يقفل الحساب فوراً عند تجاوز 10,000 د.ع بدون رصيد</small>
+          </div>
+          <b id="lblDebtProfile" style="font-size:18px;color:var(--red);font-weight:950;">0 د.ع</b>
+        </div>
+      </div>
+
+      <button class="btn-grad" onclick="openWalletModal()">💳 شحن المحفظة / تسديد ديون المنصة</button>
+
+      <div class="sec-title" style="font-size:16px;">📊 كفاءة القيادة والمشاوير</div>
+      <div class="stat-grid-3">
+        <div class="stat-card-pro">
+          <span>🏁</span>
+          <div class="val" id="stTrips">0</div>
+          <div class="lbl">إجمالي الرحلات</div>
+        </div>
+        <div class="stat-card-pro">
+          <span>🚗</span>
+          <div class="val" id="stKm">0</div>
+          <div class="lbl">كم مقطوع</div>
+        </div>
+        <div class="stat-card-pro">
+          <span>⭐</span>
+          <div class="val" style="color:var(--amber)" id="stRating">5.0</div>
+          <div class="lbl">التقييم العام</div>
+        </div>
+      </div>
+
+      <div class="sec-title" style="font-size:16px;margin-top:8px;">🧾 سجل الإيداعات والحركات المالية</div>
+      <div class="glass" style="padding:14px;display:flex;flex-direction:column;gap:10px;" id="captainFinanceHistory">
+        <div style="text-align:center;font-size:12px;color:var(--muted);padding:10px;">جاري تحميل العمليات...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. شاشة البروفايل والمعلومات الشخصية -->
+  <div class="page" id="pgProfile">
+    <div class="wrap">
+      <div class="sec-title">👤 الملف الشخصي للكابتن</div>
+
+      <div class="hero-profile glass">
+        <img src="logo.png" class="hero-avatar" id="proAvatar" alt="avatar" onerror="this.src='logo.png'">
+        <div>
+          <h3 style="font-size:17px;font-weight:950;" id="proName">كابتن معتمد</h3>
+          <span style="font-size:12px;color:var(--cyan);" id="proPhone">07XXXXXXXXX</span>
+          <div style="font-size:11px;color:var(--green);margin-top:4px;font-weight:bold;">● الحساب موثق لدى المنصة</div>
+        </div>
+      </div>
+
+      <div class="glass" style="padding:18px;display:flex;flex-direction:column;gap:12px;">
+        <h4 style="font-size:14px;font-weight:950;color:var(--cyan);">🚗 بيانات المركبة المسجلة</h4>
+        <div style="display:flex;justify-content:space-between;font-size:13px;border-bottom:1px solid var(--stroke);padding-bottom:8px;">
+          <span style="color:var(--muted);">نوع وموديل السيارة:</span>
+          <b id="proCarModel">--</b>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;">
+          <span style="color:var(--muted);">رقم اللوحة المرورية:</span>
+          <b id="proCarPlate">--</b>
+        </div>
+      </div>
+
+      <div class="glass" style="padding:18px;display:flex;flex-direction:column;gap:10px;">
+        <h4 style="font-size:14px;font-weight:950;">⚙️ خيارات الحساب</h4>
+        <button class="btn-ghost" style="text-align:right;" onclick="openDisputeModal()">🚨 تقديم بلاغ أو شكوى طارئة للإدارة</button>
+        <button class="btn-ghost" style="text-align:right;color:var(--red);" onclick="logout()">🚪 تسجيل الخروج من الحساب</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- نافذة إلغاء الرحلة وتحديد السبب -->
+  <div class="modal" id="capCancelModal">
+    <div class="modal-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--stroke);padding-bottom:10px;margin-bottom:14px;">
+        <h3 style="font-size:16px;font-weight:950;color:var(--red);">إلغاء الرحلة وتحديد السبب</h3>
+        <button style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;" onclick="closeCaptainCancelModal()">✕</button>
+      </div>
+
+      <label style="font-size:12px;color:var(--muted);font-weight:bold;display:block;margin-bottom:6px;">اختر سبب الإلغاء:</label>
+      <select id="selectCapCancelReason" style="width:100%;padding:13px;background:#0b1220;border:1px solid var(--stroke);color:#fff;border-radius:14px;font-weight:900;margin-bottom:14px;">
+        <option value="الزبون هو من طلب الإلغاء">الزبون هو من طلب الإلغاء</option>
+        <option value="عطل مفاجئ في المركبة">عطل مفاجئ في المركبة</option>
+        <option value="الزبون لا يجيب على الهاتف">الزبون لا يجيب على الهاتف</option>
+        <option value="موقع الزبون بعيد جداً أو مغلق">موقع الزبون بعيد جداً أو مغلق</option>
+        <option value="ظرف طارئ آخر">ظرف طارئ آخر</option>
+      </select>
+
+      <button class="btn-grad" style="background:linear-gradient(135deg,#ef4444,#b91c1c);" onclick="confirmCaptainCancel()">تأكيد إلغاء الرحلة وإشعار الراكب ✕</button>
+    </div>
+  </div>
+
+  <!-- نافذة المراسلة الزجاجية للكابتن -->
+  <div class="modal" id="captainChatModal">
+    <div class="modal-card" style="height:480px;display:flex;flex-direction:column;">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--stroke);padding-bottom:10px;">
+        <div>
+          <h3 style="font-size:15px;font-weight:950;color:var(--cyan)">💬 محادثة الراكب</h3>
+          <span style="font-size:11px;color:var(--green)">● متصل عبر المنظومة</span>
+        </div>
+        <button style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;" onclick="closeCaptainChat()">✕</button>
+      </div>
+
+      <div id="capChatArea" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:10px 0;margin:8px 0;">
+        <div style="text-align:center;font-size:11px;color:var(--muted);">تواصل مع الراكب لتحديد مكان الالتقاء بدقة.</div>
+      </div>
+
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="inCapChatMsg" placeholder="اكتب رسالتك للراكب..." style="flex:1;padding:12px;background:#0b1220;border:1px solid var(--stroke);color:#fff;border-radius:14px;font-weight:bold;font-size:13px;" onkeypress="if(event.key==='Enter') sendCapChatMessage()">
+        <button class="btn-grad" style="width:auto;padding:0 18px;" onclick="sendCapChatMessage()">➤</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- نافذة شحن المحفظة وتسديد الديون -->
+  <div class="modal" id="walletModal">
+    <div class="modal-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--stroke);padding-bottom:10px;">
+        <h3 style="font-size:16px;font-weight:950;color:var(--cyan)">💳 شحن الرصيد وتسديد ديون التطبيق</h3>
+        <button style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;" onclick="closeWalletModal()">✕</button>
+      </div>
+
+      <div class="glass" style="padding:14px;margin-bottom:14px;font-size:12.5px;line-height:1.7;">
+        <span>حول المبلغ المطلوب لحساب إدارة المنصة بالماستركارد:</span><br>
+        <b style="color:var(--amber);font-size:16px;direction:ltr;display:inline-block;letter-spacing:1px;" id="masterCardNum">5377 6200 1234 5678</b>
+        <button class="btn-ghost" style="padding:4px 10px;font-size:11px;margin-right:8px;" onclick="copyCard()">نسخ الرقم 📋</button><br>
+        <small style="color:var(--muted)">أو عبر زين كاش / مصرف الرافدين - باسم إدارة وصلني بطريقك</small>
+      </div>
+
+      <div class="inp-w"><label>المبلغ المحوّل بالدينار (د.ع)</label>
+        <div class="inp"><input type="number" id="inPayAmount" placeholder="مثال: 1000000" style="padding:13px;"></div>
+      </div>
+
+      <div class="inp-w"><label>صورة وصل التحويل (الإشعار)</label>
+        <div class="uptile" id="tReceipt"><span>🧾</span><span>اختر صورة الوصل من المعرض</span><input type="file" accept="image/*" class="file-input-overlay" onchange="pickDoc(this,'receipt','tReceipt')"></div>
+      </div>
+
+      <button class="btn-grad" onclick="submitTopupRequest()">إرسال إشعار التحويل للإدارة ✓</button>
+    </div>
+  </div>
+
+  <!-- نافذة تقديم بلاغ طارئ -->
+  <div class="modal" id="disputeModal">
+    <div class="modal-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--stroke);padding-bottom:10px;">
+        <h3 style="font-size:16px;font-weight:950;color:var(--red)">🚨 تقديم بلاغ طارئ للإدارة</h3>
+        <button style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;" onclick="closeDisputeModal()">✕</button>
+      </div>
+      <div class="inp-w"><label>نوع المشكلة</label>
+        <select id="inCapDisputeType" style="width:100%;padding:13px;background:#0b1220;border:1px solid var(--stroke);color:#fff;border-radius:14px;font-weight:900;">
+          <option value="تهرب الراكب من دفع الأجرة">تهرب الراكب من دفع الأجرة</option>
+          <option value="إلغاء غير مبرر بعد الوصول لموقعه">إلغاء غير مبرر بعد الوصول لموقعه</option>
+          <option value="سلوك غير لائق أو ضرر بالمركبة">سلوك غير لائق أو ضرر بالمركبة</option>
+          <option value="موقع خاطئ ومغلق">موقع خاطئ ومغلق</option>
+        </select>
+      </div>
+      <div class="inp-w"><label>التفاصيل بدقة</label>
+        <textarea id="inCapDisputeDetails" placeholder="اشرح ما حدث لمتابعة الإدارة..." style="width:100%;height:90px;padding:12px;background:#0b1220;border:1px solid var(--stroke);color:#fff;border-radius:14px;resize:none;font-weight:900;"></textarea>
+      </div>
+      <button class="btn-grad" style="background:linear-gradient(135deg,#ef4444,#b91c1c);" onclick="submitCaptainDispute()">إرسال البلاغ فوراً 🚀</button>
+    </div>
+  </div>
+
+  <div class="bnav">
+    <div class="nitem on" onclick="nav('pgRadar',this)"><span>🚕</span><span>الرادار</span></div>
+    <div class="nitem" onclick="nav('pgEarn',this)"><span>💰</span><span>المحفظة</span></div>
+    <div class="nitem" onclick="nav('pgProfile',this)"><span>👤</span><span>حسابي</span></div>
+    <div class="nitem" onclick="openDisputeModal()"><span style="font-size:20px;">🚨</span><span>بلاغ</span></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { 
+      getFirestore, collection, query, where, onSnapshot, doc, updateDoc, setDoc, getDoc, getDocs, increment, addDoc, orderBy, limit, runTransaction, serverTimestamp 
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDOUbHXIDwnEslmhwb2f_Jo83XpmpLVzFY",
+      authDomain: "tixe-4d8ac.firebaseapp.com",
+      databaseURL: "https://tixe-4d8ac-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "tixe-4d8ac",
+      storageBucket: "tixe-4d8ac.firebasestorage.app",
+      messagingSenderId: "1009320674344",
+      appId: "1:1009320674344:web:5b509fa96d12be29e1a11d"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const $ = id => document.getElementById(id);
+    let cap = JSON.parse(localStorage.getItem('cap_session') || 'null');
+    let isOnline = false, tripId = null, orderData = null, phase = 1;
+    let cdTimer = null, ordersUn = null;
+    let approvalWatcher = null;
+    let capChatUnsubscribe = null;
+    let gpsWatchId = null;
+
+    window.docs = { 
+      avatar:'', 
+      sanawaFront:'', sanawaBack:'', 
+      licenseFront:'', licenseBack:'', 
+      idFront:'', idBack:'', 
+      residenceFront:'', residenceBack:'', 
+      receipt:'' 
+    };
+
+    function create3DCarPin(heading = 0) {
+      return L.divIcon({
+        className: "",
+        html: `
+          <div style="width:52px;height:52px;transform:rotate(${heading}deg);transition:transform 0.35s linear;display:flex;align-items:center;justify-content:center;">
+            <svg viewBox="0 0 100 100" width="48" height="48" style="filter:drop-shadow(0 10px 16px rgba(0,0,0,0.7));">
+              <ellipse cx="50" cy="54" rx="23" ry="42" fill="rgba(0,0,0,0.4)"/>
+              <path d="M32,24 C32,10 40,4 50,4 C60,4 68,10 68,24 L70,58 C70,72 68,88 62,94 C58,97 54,98 50,98 C46,98 42,97 38,94 C32,88 30,72 30,58 Z" fill="#ffffff" stroke="#38bdf8" stroke-width="2"/>
+              <path d="M35,32 C35,22 42,20 50,20 C58,20 65,22 65,32 L63,46 C63,48 37,48 37,46 Z" fill="#0f172a"/>
+              <path d="M37,48 L63,48 L62,72 L38,72 Z" fill="#facc15"/>
+              <rect x="41" y="55" width="18" height="8" rx="2" fill="#0f172a" stroke="#ffffff" stroke-width="1.2"/>
+              <path d="M38,75 L62,75 L64,84 C64,87 36,87 36,84 Z" fill="#0f172a"/>
+              <circle cx="36" cy="9" r="3.5" fill="#38bdf8"/>
+              <circle cx="64" cy="9" r="3.5" fill="#38bdf8"/>
+              <rect x="33" y="93" width="7" height="3" rx="1.5" fill="#ef4444"/>
+              <rect x="60" y="93" width="7" height="3" rx="1.5" fill="#ef4444"/>
+            </svg>
+          </div>
+        `,
+        iconSize: [52, 52],
+        iconAnchor: [26, 26]
+      });
+    }
+
+    const map = L.map('map', { zoomControl: false }).setView([31.045, 46.257], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
+      maxZoom: 19, 
+      attribution: '© OpenStreetMap contributors' 
+    }).addTo(map);
+
+    const layers = L.layerGroup().addTo(map);
+    const wipe = () => layers.clearLayers();
+    let capMarker = null;
+
+    const update3DCar = (lat, lng, heading = 0) => {
+      if (!capMarker) {
+        capMarker = L.marker([lat, lng], { icon: create3DCarPin(heading), zIndexOffset: 1000 }).addTo(map);
+      } else {
+        capMarker.setLatLng([lat, lng]);
+        capMarker.setIcon(create3DCarPin(heading));
+      }
+    };
+
+    function toast(msg, type = 'info') {
+      const t = document.createElement('div');
+      t.className = `toast ${type}`;
+      t.innerText = msg;
+      $('toastContainer').appendChild(t);
+      setTimeout(() => t.remove(), 3200);
+    }
+
+    const compress = file => new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          const c = document.createElement('canvas');
+          const s = Math.min(1, 450 / img.width);
+          c.width = img.width * s; c.height = img.height * s;
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          res(c.toDataURL('image/jpeg', 0.35));
+        };
+        img.onerror = rej; img.src = e.target.result;
+      };
+      r.onerror = rej; r.readAsDataURL(file);
+    });
+
+    window.pickDoc = async (inp, key, tid) => {
+      if (!inp.files?.[0]) return;
+      try {
+        window.docs[key] = await compress(inp.files[0]);
+        $(tid).style.borderColor = 'var(--green)';
+        $(tid).style.color = 'var(--green)';
+      } catch (e) { toast('فشل تحميل الصورة', 'danger'); }
+    };
+
+    window.togglePass = (id, btn) => {
+      const el = $(id);
+      if (el.type === 'password') { el.type = 'text'; btn.innerText = '🙈'; }
+      else { el.type = 'password'; btn.innerText = '👁️'; }
+    };
+
+    function startApprovalWatcher(phone) {
+      if (approvalWatcher) approvalWatcher();
+      approvalWatcher = onSnapshot(doc(db, 'captains', phone), snap => {
+        if (!snap.exists()) return;
+        const d = snap.data();
+        if (d.status === 'active') {
+          cap = d;
+          localStorage.setItem('cap_session', JSON.stringify({ phone: d.phone, name: d.name }));
+          $('portal').style.display = 'none';
+          $('pendingBox').style.display = 'none';
+          toast('🎉 تم تفعيل الحساب بنجاح', 'success');
+          listenCapData();
+          listenFinanceLogs();
+        }
+      });
+    }
+
+    window.addEventListener('load', async () => {
+      if (!cap) { $('portal').style.display = 'flex'; return; }
+      try {
+        const s = await getDoc(doc(db, 'captains', cap.phone));
+        if (!s.exists()) throw 0;
+        cap = s.data();
+        if (cap.status === 'pending_approval') {
+          $('portal').style.display = 'flex';
+          $('paneLogin').style.display = 'none';
+          $('authTabsNav').style.display = 'none';
+          $('pendingBox').style.display = 'block';
+          startApprovalWatcher(cap.phone);
+          return;
+        }
+        $('portal').style.display = 'none';
+        listenCapData();
+        listenFinanceLogs();
+        restoreActiveTripIfAny();
+      } catch (e) {
+        localStorage.removeItem('cap_session');
+        $('portal').style.display = 'flex';
+      }
+    });
+
+    window.authMode = m => {
+      const l = m === 'login';
+      $('tabLogin').classList.toggle('active', l);
+      $('tabReg').classList.toggle('active', !l);
+      $('paneLogin').style.display = l ? 'block' : 'none';
+      $('paneReg').style.display = l ? 'none' : 'block';
+      $('pendingBox').style.display = 'none';
+    };
+
+    window.goStep = s => {
+      ['rs1','rs2','rs3'].forEach((id,i) => $(id).style.display = (i+1 === s) ? 'flex' : 'none');
+    };
+
+    window.doLogin = async () => {
+      const phone = $('loginPhone').value.trim();
+      const pass = $('loginPass').value;
+      const btn = $('btnSubmitLogin');
+
+      if (!phone || !pass) { toast('يرجى إدخال رقم الهاتف وكلمة السر', 'danger'); return; }
+
+      btn.disabled = true;
+      btn.innerText = 'جاري التحقق...';
+
+      try {
+        const s = await getDoc(doc(db, 'captains', phone));
+        if (!s.exists()) { 
+          toast('هذا الرقم غير مسجل كـ كابتن', 'danger'); 
+          btn.disabled = false;
+          btn.innerText = 'تسجيل الدخول';
+          return; 
+        }
+
+        const d = s.data();
+        if (d.password && d.password !== pass) { 
+          toast('كلمة السر غير صحيحة', 'danger'); 
+          btn.disabled = false;
+          btn.innerText = 'تسجيل الدخول';
+          return; 
+        }
+
+        cap = d;
+        localStorage.setItem('cap_session', JSON.stringify({ phone: d.phone, name: d.name }));
+
+        if (d.status === 'pending_approval') {
+          $('paneLogin').style.display = 'none';
+          $('authTabsNav').style.display = 'none';
+          $('pendingBox').style.display = 'block';
+          startApprovalWatcher(phone);
+          btn.disabled = false;
+          btn.innerText = 'تسجيل الدخول';
+          return;
+        }
+
+        $('portal').style.display = 'none';
+        toast('أهلاً بك يا بطل ⚡', 'success');
+        listenCapData();
+        listenFinanceLogs();
+        restoreActiveTripIfAny();
+      } catch (e) {
+        toast('حدث خطأ: ' + e.message, 'danger');
+        btn.disabled = false;
+        btn.innerText = 'تسجيل الدخول';
+      }
+    };
+
+    window.doRegister = async () => {
+      const name = $('regName').value.trim();
+      const phone = $('regPhone').value.trim();
+      const pass = $('regPass').value;
+      const car = $('regCar').value.trim();
+      const plate = $('regPlate').value.trim();
+
+      const requiredDocs = ['avatar','sanawaFront','sanawaBack','licenseFront','licenseBack','idFront','idBack','residenceFront','residenceBack'];
+      if (requiredDocs.some(k => !window.docs[k])) {
+        toast('يرجى رفع صور كافة المستمسكات الأربعة (وجه وظهر) كاملة', 'danger');
+        return;
+      }
+
+      const rec = {
+        name, phone, password: pass, carModel: car, carPlate: plate,
+        status: 'pending_approval', rating: 5, ratingCount: 1, avatarUrl: window.docs.avatar,
+        docs: { ...window.docs }, totalTrips: 0, todayTrips: 0, totalKm: 0, netEarnings: 0,
+        companyDebt: 0, walletBalance: 0, isOnline: false, createdAt: serverTimestamp()
+      };
+
+      await setDoc(doc(db, 'captains', phone), rec);
+      cap = rec;
+      localStorage.setItem('cap_session', JSON.stringify({ phone, name }));
+      $('paneReg').style.display = 'none';
+      $('authTabsNav').style.display = 'none';
+      $('pendingBox').style.display = 'block';
+      startApprovalWatcher(phone);
+    };
+
+    // الاستماع الدقيق لبيانات الكابتن، والتقييم الحقيقي، والرصيد، وفك قفل الديون
+    function listenCapData() {
+      onSnapshot(doc(db, 'captains', cap.phone), async s => {
+        if (!s.exists()) return;
+        cap = { ...cap, ...s.data() };
+        
+        const debt = cap.companyDebt || 0;
+        const wallet = cap.walletBalance || 0;
+        const isBannedByAdmin = (cap.status === 'blocked' || cap.status === 'debt_locked');
+        const isOverDebtLimit = (debt >= 10000 && wallet <= 0);
+
+        $('topName').innerText = (cap.name || 'كابتن').split(' ')[0];
+        
+        // عرض التقييم التراكمي الفعلي
+        const currentRating = Number(cap.rating || 5.0).toFixed(1);
+        $('topRating').innerText = currentRating;
+        $('stRating').innerText = currentRating;
+        
+        $('lblWalletBalance').innerText = `${wallet.toLocaleString()} د.ع`;
+        $('earnTotal').innerText = `${(cap.netEarnings || 0).toLocaleString()} د.ع`;
+        $('lblDebtProfile').innerText = `${debt.toLocaleString()} د.ع`;
+        $('stTrips').innerText = cap.totalTrips || 0;
+        $('stKm').innerText = (cap.totalKm || 0).toFixed(1);
+
+        $('proName').innerText = cap.name || 'كابتن معتمد';
+        $('proPhone').innerText = cap.phone || '';
+        $('proCarModel').innerText = cap.carModel || '--';
+        $('proCarPlate').innerText = cap.carPlate || '--';
+
+        // الحظر الفوري الصارم إذا تم القفل من الإدارة أو وصل الدين للحد الأقصى
+        if (isBannedByAdmin || isOverDebtLimit) {
+          $('debtNoticeCard').style.display = 'flex';
+          $('txtLockDesc').innerText = `تم حظر الحساب. مستحقات المنصة بذمتك: ${debt.toLocaleString()} د.ع`;
+          
+          if (isOnline) {
+            isOnline = false;
+            $('onlineWrap').classList.remove('on');
+            $('lblOnline').innerText = 'غير متصل (مقفل)';
+            if (gpsWatchId) navigator.geolocation.clearWatch(gpsWatchId);
+            if (ordersUn) { ordersUn(); ordersUn = null; }
+            toast('❌ تم فصلك عن الرادار بسبب الحظر أو تراكم الديون', 'danger');
+          }
+        } else {
+          $('debtNoticeCard').style.display = 'none';
+        }
+      });
+    }
+
+    function listenFinanceLogs() {
+      const q = query(collection(db, "finance_logs"), where("captainPhone", "==", cap.phone), orderBy("timestamp", "desc"), limit(10));
+      onSnapshot(q, snap => {
+        const container = $('captainFinanceHistory');
+        if (snap.empty) {
+          container.innerHTML = '<div style="text-align:center;font-size:12px;color:var(--muted);padding:10px;">لا توجد إيداعات سابقة.</div>';
+          return;
+        }
+
+        const rows = [];
+        snap.forEach(d => {
+          const item = d.data();
+          const isAppr = item.status === "approved";
+          rows.push(`
+            <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.03);border:1px solid var(--stroke);padding:10px 14px;border-radius:14px;">
+              <div>
+                <b style="font-size:13px;display:block;">${item.type || 'شحن محفظة'}</b>
+                <span style="font-size:10.5px;color:var(--muted);">${item.status === 'pending_review' ? '⏳ قيد التدقيق' : isAppr ? '✓ تم الاعتماد والإيداع' : '✕ مرفوض'}</span>
+              </div>
+              <b style="color:${isAppr ? 'var(--green)' : 'var(--amber)'};font-size:14px;">+${(item.amount || 0).toLocaleString()} د.ع</b>
+            </div>
+          `);
+        });
+        container.innerHTML = rows.join("");
+      });
+    }
+
+    function startBroadcastingLocation() {
+      if (navigator.geolocation) {
+        gpsWatchId = navigator.geolocation.watchPosition(async (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          const heading = pos.coords.heading || 0;
+
+          update3DCar(lat, lng, heading);
+
+          if (tripId) {
+            await updateDoc(doc(db, "trips", tripId), {
+              captainLocation: { lat, lng, heading }
+            }).catch(()=>{});
+          }
+        }, null, { enableHighAccuracy: true, maximumAge: 1000 });
+      }
+    }
+
+    window.toggleOnline = () => {
+      const debt = cap.companyDebt || 0;
+      const wallet = cap.walletBalance || 0;
+      const isBlocked = (cap.status === 'blocked' || cap.status === 'debt_locked');
+
+      if (isBlocked || (debt >= 10000 && wallet <= 0)) {
+        toast('❌ لا يمكنك الاتصال! حسابك محظور أو تجاوز حد الديون المسموح به', 'danger');
+        $('debtNoticeCard').style.display = 'flex';
+        return;
+      }
+
+      isOnline = !isOnline;
+      $('onlineWrap').classList.toggle('on', isOnline);
+      $('lblOnline').innerText = isOnline ? 'متصل بالرادار' : 'غير متصل';
+      if(isOnline){
+        startBroadcastingLocation();
+        listenOrders();
+        toast('الرادار متصل ⚡ سيصلك أقرب مشوار', 'success');
+      } else {
+        if(gpsWatchId) navigator.geolocation.clearWatch(gpsWatchId);
+        if(ordersUn) { ordersUn(); ordersUn = null; }
+        if(!tripId) wipe();
+      }
+    };
+
+    // الاستماع الفوري للطلبات الجديدة في الرادار مع التأكد اللحظي من عدم الحظر
+    function listenOrders(){
+      if(ordersUn) return;
+      const q = query(collection(db, 'trips'), where('status', '==', 'searching'));
+      ordersUn = onSnapshot(q, snap => {
+        if (cap.status === 'blocked' || cap.status === 'debt_locked' || ((cap.companyDebt || 0) >= 10000 && (cap.walletBalance || 0) <= 0)) {
+          if (isOnline) toggleOnline();
+          return;
+        }
+
+        snap.docChanges().forEach(ch => {
+          const t = ch.doc.data();
+          t.id = ch.doc.id;
+          if (ch.type === 'added' && isOnline && !tripId && !orderData) {
+            showOrderCard(t);
+          }
+          if (ch.type === 'removed' && orderData && orderData.id === t.id) {
+            toast('قام الزبون بإلغاء الطلب', 'warning');
+            declineOrder();
+          }
+        });
+      });
+    }
+
+    function showOrderCard(t) {
+      orderData = t;
+      wipe();
+
+      const calculatedFare = Number(t.fare || t.finalPrice || 1500);
+      $('oFare').innerText = `${calculatedFare.toLocaleString()} د.ع`;
+      $('oPickup').innerText = t.pickup?.address || 'موقع محدد على الخريطة';
+      $('oDrop').innerText = t.dropoff?.address || 'موقع محدد على الخريطة';
+
+      if (t.pickup?.lat && t.pickup?.lng) {
+        L.circleMarker([t.pickup.lat, t.pickup.lng], { color: '#fbbf24', radius: 8 }).addTo(layers);
+      }
+      if (t.dropoff?.lat && t.dropoff?.lng) {
+        L.circleMarker([t.dropoff.lat, t.dropoff.lng], { color: '#8b5cf6', radius: 8 }).addTo(layers);
+      }
+
+      $('orderCard').style.display = 'flex';
+      
+      let sec = 15;
+      $('oTimer').innerText = sec;
+      clearInterval(cdTimer);
+      cdTimer = setInterval(() => {
+        sec--;
+        $('oTimer').innerText = sec;
+        if (sec <= 0) {
+          clearInterval(cdTimer);
+          declineOrder();
+        }
+      }, 1000);
+    }
+
+    window.declineOrder = () => {
+      clearInterval(cdTimer);
+      wipe();
+      $('orderCard').style.display = 'none';
+      orderData = null;
+    };
+
+    async function restoreActiveTripIfAny(){
+      const q = query(collection(db, "trips"), where("captainPhone", "==", cap.phone), where("status", "in", ["accepted", "arrived", "on_way"]));
+      const snap = await getDocs(q);
+      if(!snap.empty){
+        const d = snap.docs[0];
+        tripId = d.id;
+        orderData = { id: d.id, ...d.data() };
+        setupTripUI(orderData);
+        startBroadcastingLocation();
+      }
+    }
+
+    window.acceptOrder = async () => {
+      if(!orderData) return;
+      clearInterval(cdTimer);
+      const t = orderData;
+      const ref = doc(db, 'trips', t.id);
+
+      try {
+        await runTransaction(db, async tx => {
+          const snap = await tx.get(ref);
+          if (!snap.exists() || snap.data().status !== 'searching') throw new Error('taken');
+          tx.update(ref, {
+            status: 'accepted',
+            captainPhone: cap.phone,
+            captainName: cap.name,
+            captainCar: `${cap.carModel || 'مركبة معتمدة'}`,
+            acceptedAt: serverTimestamp()
+          });
+        });
+
+        tripId = t.id;
+        orderData = t;
+        setupTripUI(orderData);
+        toast('تم قبول المشوار ⚡', 'success');
+      } catch (e) {
+        toast('عذراً، ألغى الزبون الطلب أو قُبل من كابتن آخر', 'danger');
+        declineOrder();
+      }
+    };
+
+    function setupTripUI(data) {
+      $('orderCard').style.display = 'none';
+      $('tripCard').style.display = 'flex';
+      $('paxName').innerText = data.userName || "الزبون";
+      $('paxPhone').innerText = data.userPhone || "";
+      $('callPax').href = `tel:${data.userPhone}`;
+
+      const fareNum = Number(data.fare || data.finalPrice || 1500);
+      $('tFare').innerText = `${fareNum.toLocaleString()} د.ع`;
+
+      if (data.status === "accepted") {
+        phase = 1;
+        $('phaseBadge').innerText = '🧭 في الطريق للزبون';
+        $('btnPhase').innerText = 'وصلت لموقع الزبون 📍';
+      } else if (data.status === "arrived") {
+        phase = 2;
+        $('phaseBadge').innerText = '📍 في انتظار الراكب';
+        $('btnPhase').innerText = 'بدء المشوار نحو الوجهة 🚀';
+      } else if (data.status === "on_way") {
+        phase = 3;
+        $('phaseBadge').innerText = '🚀 المشوار جارٍ للوجهة';
+        $('btnPhase').innerText = 'إنهاء المشوار واستلام الأجرة 🏁';
+      }
+
+      wipe();
+      if(data.pickup?.lat && data.pickup?.lng){
+        L.circleMarker([data.pickup.lat, data.pickup.lng], { color: '#fbbf24', radius: 9 }).addTo(layers);
+      }
+    }
+
+    window.openNavigationApp = async (targetApp) => {
+      if (!orderData && tripId) {
+        const s = await getDoc(doc(db, 'trips', tripId));
+        if (s.exists()) orderData = { ...s.data(), id: s.id };
+      }
+
+      if (!orderData) {
+        toast('بيانات المشوار غير متوفرة حالياً', 'danger');
+        return;
+      }
+
+      const targetCoords = (phase === 3) ? orderData.dropoff : orderData.pickup;
+
+      if (!targetCoords || !targetCoords.lat || !targetCoords.lng) {
+        toast('إحداثيات الموقع غير متوفرة للتوجيه', 'danger');
+        return;
+      }
+
+      const lat = targetCoords.lat;
+      const lng = targetCoords.lng;
+
+      if (targetApp === 'waze') {
+        window.open(`https://waze.com/ul?ll=${lat},${lng}&navigate=yes`, '_blank');
+      } else if (targetApp === 'google') {
+        window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`, '_blank');
+      }
+    };
+
+    window.openCaptainCancelModal = () => {
+      if (!tripId) { toast('لا توجد رحلة نشطة للإلغاء', 'danger'); return; }
+      $('capCancelModal').classList.add('on');
+    };
+
+    window.closeCaptainCancelModal = () => {
+      $('capCancelModal').classList.remove('on');
+    };
+
+    window.confirmCaptainCancel = async () => {
+      const reason = $('selectCapCancelReason').value;
+      if (!tripId) return;
+
+      try {
+        await updateDoc(doc(db, "trips", tripId), {
+          status: "cancelled",
+          cancelledBy: "captain",
+          cancelReason: reason,
+          cancelledAt: serverTimestamp()
+        });
+
+        closeCaptainCancelModal();
+        $('tripCard').style.display = 'none';
+        closeCaptainChat();
+        wipe();
+        tripId = null;
+        orderData = null;
+        phase = 1;
+        toast('تم إلغاء الرحلة وإشعار الزبون بالسبب', 'warning');
+      } catch (e) {
+        toast('فشل إلغاء الرحلة: ' + e.message, 'danger');
+      }
+    };
+
+    window.nextPhase = async () => {
+      const b = $('btnPhase');
+      b.disabled = true;
+
+      try {
+        if ((!orderData || !orderData.pickup) && tripId) {
+          const s = await getDoc(doc(db, 'trips', tripId));
+          if (s.exists()) {
+            orderData = { ...s.data(), id: s.id };
+          }
+        }
+
+        if (!orderData) throw new Error("تعذر جلب بيانات الرحلة الحالية.");
+
+        if (phase === 1) {
+          wipe();
+          if (orderData.pickup?.lat && orderData.pickup?.lng) {
+            update3DCar(orderData.pickup.lat, orderData.pickup.lng, 90);
+            map.panTo([orderData.pickup.lat, orderData.pickup.lng]);
+          }
+          await updateDoc(doc(db, 'trips', tripId), { status: 'arrived', arrivedAt: serverTimestamp() });
+          phase = 2;
+          $('phaseBadge').innerText = '📍 في انتظار الراكب';
+          $('btnPhase').innerText = 'بدء المشوار نحو الوجهة 🚀';
+          toast('وصلت لموقع الزبون 📍', 'success');
+
+        } else if (phase === 2) {
+          wipe();
+          if (orderData.dropoff?.lat && orderData.dropoff?.lng) {
+            L.circleMarker([orderData.dropoff.lat, orderData.dropoff.lng], { color: '#8b5cf6', radius: 9 }).addTo(layers);
+          }
+          await updateDoc(doc(db, 'trips', tripId), { status: 'on_way', startedAt: serverTimestamp() });
+          phase = 3;
+          $('phaseBadge').innerText = '🚀 المشوار جارٍ للوجهة';
+          $('btnPhase').innerText = 'إنهاء المشوار واستلام الأجرة 🏁';
+          toast('انطلقنا نحو الوجهة 🚀', 'info');
+
+        } else if (phase === 3) {
+          const fare = Number(orderData.fare || orderData.finalPrice || 1500);
+          const km = parseFloat(orderData.distanceKm || 2.5);
+          const commissionCut = Math.round(fare * 0.10);
+
+          await runTransaction(db, async tx => {
+            const tRef = doc(db, 'trips', tripId);
+            const cRef = doc(db, 'captains', cap.phone);
+            const cs = await tx.get(cRef);
+            if (!cs.exists()) return;
+
+            const cd = cs.data();
+            let w = cd.walletBalance || 0;
+            let d = cd.companyDebt || 0;
+
+            if (w >= commissionCut) {
+              w -= commissionCut;
+            } else {
+              d += commissionCut;
+            }
+
+            tx.update(tRef, { status: 'completed', commissionCut, completedAt: serverTimestamp() });
+            tx.update(cRef, {
+              totalTrips: increment(1),
+              totalKm: increment(km),
+              netEarnings: increment(fare - commissionCut),
+              walletBalance: w,
+              companyDebt: d
+            });
+          });
+
+          $('tripCard').style.display = 'none';
+          closeCaptainChat();
+          wipe();
+          tripId = null;
+          orderData = null;
+          phase = 1;
+
+          toast('تم إنهاء المشوار بنجاح! الرادار يبحث عن مشوارك التالي ⚡', 'success');
+        }
+      } catch (e) {
+        toast('خطأ: ' + e.message, 'danger');
+      } finally {
+        b.disabled = false;
+      }
+    };
+
+    window.openCaptainChat = () => {
+      if (!tripId) return;
+      $('captainChatModal').classList.add('on');
+      const q = query(collection(db, "trips", tripId, "messages"), orderBy("timestamp", "asc"));
+      capChatUnsubscribe = onSnapshot(q, snap => {
+        const area = $('capChatArea');
+        area.innerHTML = "";
+        snap.forEach(d => {
+          const m = d.data();
+          const isMe = (m.senderPhone === cap.phone);
+          area.innerHTML += `<div style="max-width:75%;padding:10px 14px;border-radius:16px;font-size:13px;word-break:break-word;align-self:${isMe ? 'flex-end' : 'flex-start'};background:${isMe ? 'var(--grad-blue)' : 'rgba(255,255,255,0.08)'};color:#fff;">${m.text}</div>`;
+        });
+        area.scrollTop = area.scrollHeight;
+      });
+    };
+
+    window.closeCaptainChat = () => {
+      $('captainChatModal').classList.remove('on');
+      if (capChatUnsubscribe) capChatUnsubscribe();
+    };
+
+    window.sendCapChatMessage = async () => {
+      const inp = $('inCapChatMsg');
+      if (!inp.value.trim() || !tripId) return;
+      await addDoc(collection(db, "trips", tripId, "messages"), {
+        senderPhone: cap.phone,
+        senderName: cap.name || "الكابتن",
+        text: inp.value.trim(),
+        timestamp: serverTimestamp()
+      });
+      inp.value = "";
+    };
+
+    window.openWalletModal = () => $('walletModal').classList.add('on');
+    window.closeWalletModal = () => $('walletModal').classList.remove('on');
+
+    window.copyCard = () => {
+      navigator.clipboard.writeText($('masterCardNum').innerText.replace(/\s+/g, ''));
+      toast('تم نسخ رقم البطاقة بنجاح 📋', 'success');
+    };
+
+    window.submitTopupRequest = async () => {
+      const amount = Number($('inPayAmount').value);
+      if (!amount || !window.docs.receipt){
+        toast('يرجى إدخال المبلغ وإرفاق صورة الوصل', 'danger');
+        return;
+      }
+
+      await addDoc(collection(db, "finance_logs"), {
+        captainPhone: cap.phone,
+        captainName: cap.name,
+        amount: amount,
+        receiptImg: window.docs.receipt,
+        status: "pending_review",
+        type: "شحن رصيد المحفظة / ماستركارد",
+        timestamp: serverTimestamp()
+      });
+
+      closeWalletModal();
+      $('inPayAmount').value = "";
+      toast('تم إرسال إشعار التحويل للإدارة وسيظهر الرصيد فور الاعتماد ✓', 'success');
+    };
+
+    window.openDisputeModal = () => $('disputeModal').classList.add('on');
+    window.closeDisputeModal = () => $('disputeModal').classList.remove('on');
+
+    window.submitCaptainDispute = async () => {
+      const issueType = $('inCapDisputeType').value;
+      const details = $('inCapDisputeDetails').value.trim();
+      if (!details) { toast('يرجى توضيح الشكوى', 'danger'); return; }
+
+      await addDoc(collection(db, "disputes"), {
+        reporterName: cap.name,
+        reporterPhone: cap.phone,
+        reporterRole: "captain",
+        issueType: issueType,
+        details: details,
+        tripId: tripId || "خارج مشوار نشط",
+        accusedName: $('paxName')?.innerText || "الراكب",
+        accusedPhone: $('paxPhone')?.innerText || "غير متوفر",
+        status: "pending",
+        createdAt: serverTimestamp()
+      });
+
+      closeDisputeModal();
+      $('inCapDisputeDetails').value = "";
+      toast('🚨 تم إرسال البلاغ لغرفة العمليات', 'success');
+    };
+
+    window.nav = (pid, el) => {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+      document.querySelectorAll('.nitem').forEach(n => n.classList.remove('on'));
+      $(pid).classList.add('on'); el.classList.add('on');
+      if (pid === 'pgRadar') setTimeout(() => map.invalidateSize(), 150);
+    };
+
+    window.logout = async () => {
+      try {
+        if (isOnline) await updateDoc(doc(db, 'captains', cap.phone), { isOnline: false });
+      } catch (e) {}
+      if (approvalWatcher) approvalWatcher();
+      localStorage.removeItem('cap_session');
+      location.reload();
+    };
+  </script>
+
+  <!-- محرك PWA المدمج لتشغيل التطبيق كأنه مثبت من المتجر -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      const swCode = `
+        self.addEventListener('install', e => self.skipWaiting());
+        self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+        self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => caches.match(e.request))));
+      `;
+      const blobSW = new Blob([swCode], { type: 'application/javascript' });
+      const swURL = URL.createObjectURL(blobSW);
+      navigator.serviceWorker.register(swURL).catch(() => {});
+    }
+  </script>
+</body>
+</html>
