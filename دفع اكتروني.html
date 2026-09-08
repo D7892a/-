@@ -1,0 +1,1748 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>وصلني بطريقك | مركز القيادة والتحكم الإداري</title>
+  
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- مكتبة الخريطة الحرارية المعتمدة والمجانية -->
+  <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900;950&display=swap');
+
+    :root {
+      --bg: #040812;
+      --surface: rgba(13, 22, 38, 0.72);
+      --card-glass: rgba(18, 30, 52, 0.58);
+      --border-glass: rgba(255, 255, 255, 0.08);
+      --border-glow: rgba(34, 211, 238, 0.35);
+      --cyan: #22d3ee;
+      --violet: #8b5cf6;
+      --pink: #ec4899;
+      --primary: #1557ff;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --txt: #f8fafc;
+      --muted: #8496b3;
+      --sidebar-w: 280px;
+      --grad: linear-gradient(135deg, #22d3ee 0%, #8b5cf6 55%, #ec4899 100%);
+      --grad-blue: linear-gradient(135deg, #1557ff, #002ca8);
+      --grad-card: linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Cairo', -apple-system, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--txt);
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .mesh-glow {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background: 
+        radial-gradient(circle at 10% 15%, rgba(21, 87, 255, 0.16), transparent 40%),
+        radial-gradient(circle at 90% 85%, rgba(236, 72, 153, 0.11), transparent 42%),
+        radial-gradient(circle at 50% 50%, rgba(34, 211, 238, 0.06), transparent 50%);
+    }
+
+    .sidebar {
+      width: var(--sidebar-w);
+      background: rgba(9, 15, 28, 0.92);
+      border-left: 1px solid var(--border-glass);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      z-index: 1500;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .brand-header {
+      padding: 22px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border-glass);
+    }
+
+    .brand-badge {
+      width: 48px;
+      height: 48px;
+      background: var(--grad);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      box-shadow: 0 10px 28px rgba(139, 92, 246, 0.4);
+    }
+
+    .brand-title {
+      font-size: 16.5px;
+      font-weight: 950;
+      background: var(--grad);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .nav-menu {
+      list-style: none;
+      padding: 14px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11.5px 16px;
+      border-radius: 16px;
+      color: var(--muted);
+      font-size: 12.5px;
+      font-weight: 800;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.25s ease;
+    }
+
+    .nav-btn:hover { background: rgba(255, 255, 255, 0.05); color: #fff; }
+
+    .nav-btn.active {
+      background: linear-gradient(135deg, rgba(34, 211, 238, 0.16), rgba(139, 92, 246, 0.12));
+      border: 1px solid var(--border-glow);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(34, 211, 238, 0.15);
+    }
+
+    .nav-badge {
+      margin-right: auto;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 10.5px;
+      font-weight: 950;
+      background: var(--danger);
+      color: #fff;
+    }
+
+    .nav-badge-live {
+      margin-right: auto;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 10.5px;
+      font-weight: 950;
+      background: var(--success);
+      color: #fff;
+      animation: pulseLive 1.4s infinite;
+    }
+
+    @keyframes pulseLive { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    .viewport {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      min-width: 0;
+      z-index: 10;
+    }
+
+    .top-bar {
+      background: rgba(8, 14, 26, 0.82);
+      border-bottom: 1px solid var(--border-glass);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    .mobile-trigger {
+      display: none;
+      background: var(--card-glass);
+      border: 1px solid var(--border-glass);
+      color: #fff;
+      font-size: 18px;
+      padding: 6px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .screen { padding: 22px; display: none; flex-direction: column; gap: 20px; }
+    .screen.active { display: flex; animation: fadeIn .25s ease; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+      gap: 16px;
+    }
+
+    .glass-card {
+      background: var(--card-glass);
+      border: 1px solid var(--border-glass);
+      border-radius: 24px;
+      padding: 22px;
+      backdrop-filter: blur(22px);
+      -webkit-backdrop-filter: blur(22px);
+      box-shadow: 0 16px 45px rgba(0, 0, 0, 0.35);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .glass-card::before { content: ""; position: absolute; top: 0; right: 0; width: 4px; height: 100%; background: var(--cyan); }
+    .glass-card.card-pink::before { background: var(--pink); }
+    .glass-card.card-green::before { background: var(--success); }
+    .glass-card.card-red::before { background: var(--danger); }
+    .glass-card.card-amber::before { background: var(--warning); }
+
+    .card-title { font-size: 12px; font-weight: 800; color: var(--muted); margin-bottom: 6px; }
+    .card-num { font-size: 28px; font-weight: 950; letter-spacing: -0.5px; }
+
+    .radar-frame {
+      background: var(--card-glass);
+      border: 1px solid var(--border-glass);
+      border-radius: 26px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .radar-bar {
+      padding: 15px 22px;
+      background: rgba(14, 23, 38, 0.65);
+      border-bottom: 1px solid var(--border-glass);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    #commandMap {
+      height: 480px;
+      width: 100%;
+      background: #040812;
+    }
+
+    .table-box {
+      background: var(--card-glass);
+      border: 1px solid var(--border-glass);
+      border-radius: 26px;
+      overflow: hidden;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+
+    .table-header {
+      padding: 16px 22px;
+      background: rgba(14, 23, 38, 0.65);
+      border-bottom: 1px solid var(--border-glass);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .table-container { overflow-x: auto; max-height: 480px; }
+    table { width: 100%; min-width: 720px; border-collapse: collapse; text-align: right; }
+    th {
+      background: rgba(9, 15, 28, 0.94);
+      padding: 14px 20px;
+      font-size: 11.5px;
+      font-weight: 950;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border-glass);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+    td { padding: 15px 20px; font-size: 13px; border-bottom: 1px solid var(--border-glass); color: #e2e8f0; }
+    tr:hover td { background: rgba(255, 255, 255, 0.025); }
+
+    .captains-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(325px, 1fr));
+      gap: 18px;
+    }
+
+    .captain-tile {
+      background: var(--card-glass);
+      border: 1.5px solid var(--border-glass);
+      border-radius: 24px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 13px;
+    }
+
+    .captain-tile.locked-danger {
+      border-color: rgba(239, 68, 68, 0.7);
+      background: linear-gradient(180deg, rgba(239, 68, 68, 0.12) 0%, var(--card-glass) 100%);
+    }
+
+    .captain-avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 16px;
+      object-fit: cover;
+      border: 2px solid var(--cyan);
+      background: #0f172a;
+    }
+
+    .debt-badge {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      color: #f87171;
+      padding: 9px 14px;
+      border-radius: 14px;
+      font-size: 12px;
+      font-weight: 950;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .inp-field {
+      width: 100%;
+      padding: 13px 16px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border-glass);
+      color: #fff;
+      font-weight: bold;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    .inp-field:focus { border-color: var(--cyan); box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.14); }
+
+    .btn {
+      padding: 10px 18px;
+      border-radius: 15px;
+      font-size: 12.5px;
+      font-weight: 900;
+      cursor: pointer;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      color: #fff;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-grad { background: var(--grad-blue); box-shadow: 0 6px 20px rgba(21, 87, 255, 0.35); }
+    .btn-danger { background: linear-gradient(135deg, #ef4444, #b91c1c); box-shadow: 0 6px 18px rgba(239, 68, 68, 0.3); }
+    .btn-success { background: linear-gradient(135deg, #10b981, #047857); box-shadow: 0 6px 18px rgba(16, 185, 129, 0.3); }
+    .btn-ghost { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-glass); color: #cbd5e1; }
+
+    .tag-status { padding: 4px 10px; border-radius: 10px; font-size: 10.5px; font-weight: 950; }
+    .tag-success { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+    .tag-danger { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+    .tag-warning { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+    .tag-primary { background: rgba(34, 211, 238, 0.15); color: #22d3ee; }
+
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(2, 6, 15, 0.85); backdrop-filter: blur(16px); z-index: 5000; display: none; align-items: center; justify-content: center; padding: 16px;
+    }
+    .modal-card {
+      background: rgba(13, 22, 38, 0.98); border: 1px solid var(--border-glass); border-radius: 28px; width: 100%; max-width: 680px; max-height: 90vh; overflow-y: auto; padding: 26px; box-shadow: 0 25px 70px rgba(0, 0, 0, 0.7);
+    }
+
+    @media (max-width: 960px) {
+      .sidebar { position: fixed; inset-block: 0; right: calc(var(--sidebar-w) * -1); }
+      .sidebar.active { transform: translateX(calc(var(--sidebar-w) * -1)); }
+      .mobile-trigger { display: block; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="mesh-glow"></div>
+
+  <aside class="sidebar" id="mainSidebar">
+    <div class="brand-header">
+      <div class="brand-badge">🚕</div>
+      <div>
+        <h3 class="brand-title">وصلني بطريقك</h3>
+        <span style="font-size: 11px; color: var(--muted);">مركز القيادة والتحكم ⚡</span>
+      </div>
+    </div>
+
+    <ul class="nav-menu">
+      <li class="nav-btn active" onclick="switchTab('secAnalytics', this)">
+        <span>📊</span> <span>المؤشرات والأرباح</span>
+      </li>
+      <li class="nav-btn" onclick="switchTab('secLiveTripsHub', this)">
+        <span>🔴</span> <span>الرحلات المباشرة</span>
+        <span class="nav-badge-live" id="badgeLiveCount">0</span>
+      </li>
+      <li class="nav-btn" onclick="switchTab('secHeatMap', this)">
+        <span>🔥</span> <span>خريطة الكثافة الحرارية</span>
+      </li>
+      <li class="nav-btn" onclick="switchTab('secCancelsLog', this)">
+        <span>🚫</span> <span>سجل الإلغاءات والأسباب</span>
+        <span class="nav-badge" id="badgeCancelCount">0</span>
+      </li>
+      <li class="nav-btn" onclick="switchTab('secCaptainsPenalties', this)">
+        <span>🚗</span> <span>مخالفات الكباتن (التخطي)</span>
+        <span class="nav-badge" id="badgeCapSkips">0</span>
+      </li>
+      <li class="nav-btn" onclick="switchTab('secCustomersPenalties', this)">
+        <span>👤</span> <span>مخالفات الزبائن (الإلغاء)</span>
+        <span class="nav-badge" id="badgeCustCancels">0</span>
+      </li>
+      <li class="nav-btn" onclick="switchTab('secTopups', this)">
+        <span>📥</span> <span>طلبات الشحن والتحويلات</span>
+        <span class="nav-badge" id="badgePendingTopups">0</span>
+      </li>
+      <li class="nav-btn" onclick="switchTab('secDisputes', this)">
+        <span>🚨</span> <span>الشكاوى والبلاغات</span>
+        <span class="nav-badge" id="badgePendingDisputes">0</span>
+      </li>
+      <li class="nav-btn" onclick="switchTab('secFinances', this)">
+        <span>💳</span> <span>المالية وشحن المحفظة</span>
+      </li>
+      <li class="nav-btn" onclick="switchTab('secBroadcast', this)">
+        <span>📢</span> <span>مركز البث والإشعارات</span>
+      </li>
+      <li class="nav-btn" onclick="switchTab('secZones', this)">
+        <span>🛑</span> <span>المناطق المحظورة والذروة</span>
+      </li>
+      <li class="nav-btn" onclick="switchTab('secTripsLog', this)">
+        <span>🏁</span> <span>سجل الرحلات العام</span>
+      </li>
+      <li class="nav-btn" onclick="switchTab('secCaptainsHQ', this)">
+        <span>🪪</span> <span>الكباتن وقفل الديون</span>
+        <span class="nav-badge" id="badgePendingCaps">0</span>
+      </li>
+      <li class="nav-btn" onclick="switchTab('secUsersList', this)">
+        <span>👥</span> <span>قاعدة الزبائن</span>
+      </li>
+      <li class="nav-btn" onclick="switchTab('secCoupons', this)">
+        <span>🎟️</span> <span>كودات الخصم</span>
+      </li>
+      <li class="nav-btn" onclick="switchTab('secBonuses', this)">
+        <span>🎁</span> <span>المكافآت والذروة</span>
+      </li>
+      <li class="nav-btn" onclick="switchTab('secPricingEngine', this)">
+        <span>⚙️</span> <span>قواعد التسعير</span>
+      </li>
+    </ul>
+  </aside>
+
+  <main class="viewport">
+    <header class="top-bar">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <button class="mobile-trigger" onclick="toggleMenu()">☰</button>
+        <h2 style="font-size: 16px; font-weight: 950;" id="txtHeaderTitle">المؤشرات والأرباح</h2>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="tag-status tag-success">● السيرفر متصل</span>
+        <button class="btn btn-ghost" onclick="exportDataCSV()">📊 تصدير Excel</button>
+        <button class="btn btn-grad" onclick="location.reload()">تحديث 🔄</button>
+      </div>
+    </header>
+
+    <!-- 1. المؤشرات والأرباح -->
+    <section class="screen active" id="secAnalytics">
+      <div class="metrics-grid">
+        <div class="glass-card">
+          <span class="card-title">أرباح عمولة المنصة (10%)</span>
+          <div class="card-num" id="lblPlatformRev" style="color: var(--cyan);">0 د.ع</div>
+        </div>
+        <div class="glass-card card-green">
+          <span class="card-title">رحلات جارية ومباشرة الآن</span>
+          <div class="card-num" id="lblLiveTripsCount" style="color: var(--success);">0</div>
+        </div>
+        <div class="glass-card card-red">
+          <span class="card-title">كباتن محظورين (+10,000 د.ع ديون)</span>
+          <div class="card-num" id="lblLockedDebtsCount" style="color: var(--danger);">0</div>
+        </div>
+        <div class="glass-card card-pink">
+          <span class="card-title">إجمالي الرحلات الملغاة</span>
+          <div class="card-num" id="lblCancelsCount" style="color: var(--pink);">0</div>
+        </div>
+        <div class="glass-card card-amber">
+          <span class="card-title">كباتن بانتظار الاعتماد</span>
+          <div class="card-num" id="lblPendingCapsCount" style="color: var(--warning);">0</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. الرحلات المباشرة الحية -->
+    <section class="screen" id="secLiveTripsHub">
+      <div class="table-box">
+        <div class="table-header">
+          <div>
+            <h4 style="font-size: 14px; font-weight: 950;">مراقبة الرحلات الجارية في هذه اللحظة 🔴</h4>
+            <p style="font-size: 11px; color: var(--muted); margin-top: 2px;">تحديث حي ومباشر للمشاوير من الانطلاق وحتى الوجهة</p>
+          </div>
+          <span class="tag-status tag-primary" id="tagLiveHubCount">0 رحلات نشطة</span>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>كود الرحلة</th>
+                <th>الكابتن</th>
+                <th>الزبون</th>
+                <th>مسار المشوار (من ← إلى)</th>
+                <th>الأجرة</th>
+                <th>الحالة الحالية</th>
+                <th>الإجراء</th>
+              </tr>
+            </thead>
+            <tbody id="liveHubTbody">
+              <tr><td colspan="7" style="text-align: center; color: var(--muted);">لا توجد رحلات جارية حالياً.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. الخريطة الحرارية (Heatmap) المجانية والسريعة بدون مفتاح ترخيص -->
+    <section class="screen" id="secHeatMap">
+      <div class="radar-frame">
+        <div class="radar-bar">
+          <div>
+            <h3 style="font-size: 14.5px; font-weight: 950;">الخريطة الحرارية لأكثر المناطق طلباً (Heatmap) 🔥</h3>
+            <p style="font-size: 11px; color: var(--muted);">تحليل جغرافي فوري يوضح بؤر الكثافة والطلب العالي في المدينة</p>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 12px; font-weight: 800; color: var(--muted);">نطاق الخدمة:</span>
+            <input type="number" id="inCoverageRadiusKm" value="12" style="width: 58px; background: rgba(255,255,255,0.07); border: 1px solid var(--border-glass); color: #fff; padding: 6px; border-radius: 12px; text-align: center; font-weight: 900;">
+            <span style="font-size: 11px;">كم</span>
+            <button class="btn btn-grad" style="padding: 7px 14px;" onclick="saveCoverage()">حفظ</button>
+          </div>
+        </div>
+        <div id="commandMap"></div>
+      </div>
+    </section>
+
+    <!-- 4. سجل الإلغاءات التفصيلي -->
+    <section class="screen" id="secCancelsLog">
+      <div class="table-box">
+        <div class="table-header">
+          <div>
+            <h4 style="font-size: 14px; font-weight: 950;">سجل الإلغاءات التفصيلي مع بيان السبب 🚫</h4>
+            <p style="font-size: 11px; color: var(--muted); margin-top: 2px;">توثيق دقيق لمعرفة الطرف الملغي والسبب لمنع التلاعب</p>
+          </div>
+          <span class="tag-status tag-danger" id="tagCancelLogCount">0 ملغاة</span>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>رقم الرحلة</th>
+                <th>المتسبب</th>
+                <th>اسم الطرف</th>
+                <th>رقم الهاتف</th>
+                <th>السبب المصرح به</th>
+                <th>التاريخ والوقت</th>
+              </tr>
+            </thead>
+            <tbody id="cancelsLogTbody">
+              <tr><td colspan="6" style="text-align: center; color: var(--muted);">جاري فحص السجلات...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. مخالفات الكباتن -->
+    <section class="screen" id="secCaptainsPenalties">
+      <div class="table-box">
+        <div class="table-header">
+          <div>
+            <h4 style="font-size: 14px; font-weight: 950;">الكباتن المتجاوزون لحد التخطي (10 مرات فأكثر) 🚗</h4>
+            <p style="font-size: 11px; color: var(--muted); margin-top: 2px;">تطبيق عقوبات الحظر أو الغرامات على المفرطين في تخطي المشاوير</p>
+          </div>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>اسم الكابتن</th>
+                <th>الهاتف</th>
+                <th>مرات التخطي</th>
+                <th>حالة الحساب</th>
+                <th>العقوبة والتحكم</th>
+              </tr>
+            </thead>
+            <tbody id="capsPenaltiesTbody">
+              <tr><td colspan="5" style="text-align: center; color: var(--muted);">لا توجد مخالفات مسجلة حالياً.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. مخالفات الزبائن -->
+    <section class="screen" id="secCustomersPenalties">
+      <div class="table-box">
+        <div class="table-header">
+          <div>
+            <h4 style="font-size: 14px; font-weight: 950;">الزبائن المتجاوزون لحد الإلغاء (5 مرات فأكثر) 👤</h4>
+            <p style="font-size: 11px; color: var(--muted); margin-top: 2px;">تطبيق إنذار، حظر مؤقت (5 ساعات)، أو غرامة مالية</p>
+          </div>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>اسم الزبون</th>
+                <th>الهاتف</th>
+                <th>مرات الإلغاء</th>
+                <th>حالة الحساب</th>
+                <th>العقوبة والتحكم</th>
+              </tr>
+            </thead>
+            <tbody id="custPenaltiesTbody">
+              <tr><td colspan="5" style="text-align: center; color: var(--muted);">لا يوجد زبائن مخالفين حالياً.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. طلبات الشحن والتحويلات -->
+    <section class="screen" id="secTopups">
+      <div class="table-box">
+        <div class="table-header">
+          <h4 style="font-size: 13.5px; font-weight: 950;">إشعارات تحويلات الكباتن (ماستركارد / زين كاش) 📥</h4>
+          <span class="tag-status tag-warning" id="tagTopupsCount">0 طلبات معلقة</span>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>الكابتن</th>
+                <th>رقم الهاتف</th>
+                <th>المبلغ المحوّل</th>
+                <th>نوع الطلب</th>
+                <th>صورة الوصل</th>
+                <th>الإجراء المعتمد</th>
+              </tr>
+            </thead>
+            <tbody id="topupsTbody">
+              <tr><td colspan="6" style="text-align: center; color: var(--muted);">لا توجد طلبات شحن معلقة حالياً.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. الشكاوى والبلاغات -->
+    <section class="screen" id="secDisputes">
+      <div class="table-box">
+        <div class="table-header">
+          <h4 style="font-size: 13.5px; font-weight: 950;">بلاغات المشاكل وحالات الطوارئ (SOS) 🚨</h4>
+          <span class="tag-status tag-danger" id="tagDisputesCount">0 بلاغات</span>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>المبلّغ</th>
+                <th>الطرف المشتكى عليه</th>
+                <th>نوع المشكلة</th>
+                <th>تفاصيل الشكوى</th>
+                <th>رقم المشوار</th>
+                <th>إجراءات فورية</th>
+              </tr>
+            </thead>
+            <tbody id="disputesTbody">
+              <tr><td colspan="6" style="text-align: center; color: var(--muted);">لا توجد شكاوى أو بلاغات معلقة حالياً.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. المالية وشحن المحفظة -->
+    <section class="screen" id="secFinances">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px;">
+        <div class="table-box" style="padding: 22px; display: flex; flex-direction: column; gap: 13px;">
+          <h3 style="font-size: 15px; font-weight: 950;">تسديد ديون أو شحن محفظة كابتن 💳</h3>
+          <input type="tel" id="txtFinanceCapPhone" placeholder="رقم هاتف الكابتن (07XXXXXXXXX)" class="inp-field">
+          <input type="number" id="txtFinanceAmount" placeholder="المبلغ بالدينار العراقي (مثال: 10000)" class="inp-field">
+          
+          <select id="selectFinanceType" class="inp-field" style="background:#090f1c;">
+            <option value="settle">تصفير / خصم ديون (استلام نقدي)</option>
+            <option value="credit">إيداع رصيد مسبق في محفظة الكابتن</option>
+          </select>
+
+          <button class="btn btn-grad" style="padding: 13px;" onclick="processCaptainFinance()">✓ تأكيد المعاملة المالية</button>
+        </div>
+
+        <div class="table-box">
+          <div class="table-header"><h4 style="font-size: 13.5px; font-weight: 950;">سجل المعاملات والتسديدات الأخيرة</h4></div>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>الكابتن</th><th>المبلغ</th><th>النوع</th><th>التاريخ</th></tr></thead>
+              <tbody id="financesLogTbody"><tr><td colspan="4" style="text-align: center;">لا توجد معاملات مسجلة.</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10. مركز البث والإشعارات -->
+    <section class="screen" id="secBroadcast">
+      <div class="table-box" style="max-width: 550px; padding: 24px; display: flex; flex-direction: column; gap: 13px;">
+        <h3 style="font-size: 15.5px; font-weight: 950;">إرسال إشعار فوري وتنبيه للمستخدمين 📢</h3>
+        <input type="text" id="txtBroadcastTitle" placeholder="عنوان الإشعار (مثال: خصم عطلة نهاية الأسبوع 🌟)" class="inp-field">
+        <textarea id="txtBroadcastBody" placeholder="نص الرسالة أو التنبيه المباشر..." class="inp-field" style="height:95px; resize:none;"></textarea>
+        
+        <select id="selectBroadcastTarget" class="inp-field" style="background:#090f1c;">
+          <option value="all">إرسال لجميع المستخدمين (زبائن + كباتن)</option>
+          <option value="customers">إرسال للزبائن فقط</option>
+          <option value="captains">إرسال للكباتن فقط (تنبيه ذروة أو ديون)</option>
+        </select>
+
+        <button class="btn btn-grad" style="padding: 13px;" onclick="sendBroadcastAlert()">🚀 إرسال الإشعار فوراً</button>
+      </div>
+    </section>
+
+    <!-- 11. المناطق المحظورة ونقاط الذروة -->
+    <section class="screen" id="secZones">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px;">
+        <div class="table-box" style="padding: 22px; display: flex; flex-direction: column; gap: 13px;">
+          <h3 style="font-size: 15px; font-weight: 950;">إضافة منطقة جغرافية خاصة 🛑</h3>
+          <input type="text" id="txtZoneName" placeholder="اسم المنطقة (مثال: جسر النصر - صيانة)" class="inp-field">
+          <input type="number" step="0.0001" id="txtZoneLat" placeholder="خط العرض (Latitude: 31.045)" class="inp-field">
+          <input type="number" step="0.0001" id="txtZoneLng" placeholder="خط الطول (Longitude: 46.257)" class="inp-field">
+          <input type="number" id="txtZoneRadius" placeholder="قطر المنطقة بالأمتار (مثال: 500)" class="inp-field">
+          
+          <select id="selectZoneType" class="inp-field" style="background:#090f1c;">
+            <option value="forbidden">منطقة محظورة (Red Zone - منع الطلبات)</option>
+            <option value="surge">منطقة ذروة (Surge Zone - رفع الأجرة +25%)</option>
+          </select>
+
+          <button class="btn btn-grad" style="padding: 13px;" onclick="addGeofenceZone()">✓ حفظ وتفعيل المنطقة</button>
+        </div>
+
+        <div class="table-box">
+          <div class="table-header"><h4 style="font-size: 13.5px; font-weight: 950;">المناطق النشطة الحالية</h4></div>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>المنطقة</th><th>النوع</th><th>القطر</th><th>إلغاء</th></tr></thead>
+              <tbody id="zonesListTbody"><tr><td colspan="4" style="text-align: center;">لا توجد مناطق محددة.</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 12. سجل الرحلات العام -->
+    <section class="screen" id="secTripsLog">
+      <div class="table-box">
+        <div class="table-header"><h4 style="font-size: 13.5px; font-weight: 950;">أحدث المشاوير المسجلة</h4></div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>الكود</th>
+                <th>الكابتن</th>
+                <th>الزبون</th>
+                <th>المسار</th>
+                <th>المسافة</th>
+                <th>الأجرة</th>
+                <th>عمولة المنصة</th>
+                <th>الحالة</th>
+              </tr>
+            </thead>
+            <tbody id="allTripsTbody"><tr><td colspan="8" style="text-align: center; color: var(--muted);">جاري جلب السجلات...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 13. الكباتن وقفل الديون والتحكم المباشر -->
+    <section class="screen" id="secCaptainsHQ">
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <button class="btn btn-ghost" onclick="filterCaps('all')">الكل</button>
+        <button class="btn btn-danger" onclick="filterCaps('debt_locked')">🔒 متجاوزين حد الديون (10K+)</button>
+        <button class="btn btn-ghost" onclick="filterCaps('pending_approval')">⏳ بانتظار التدقيق</button>
+      </div>
+      <div class="captains-grid" id="captainsGrid"></div>
+    </section>
+
+    <!-- 14. قاعدة الزبائن -->
+    <section class="screen" id="secUsersList">
+      <div class="table-box">
+        <div class="table-header"><h4 style="font-size: 13.5px; font-weight: 950;">سجل العملاء والركاب</h4></div>
+        <div class="table-container">
+          <table>
+            <thead><tr><th>الاسم</th><th>الهاتف</th><th>الرحلات</th><th>المسافة</th><th>التقييم</th><th>إهداء كود</th></tr></thead>
+            <tbody id="usersTbody"><tr><td colspan="6" style="text-align: center; color: var(--muted);">جاري تحميل الزبائن...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 15. كودات الخصم -->
+    <section class="screen" id="secCoupons">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px;">
+        <div class="table-box" style="padding: 22px; display: flex; flex-direction: column; gap: 13px;">
+          <h3 style="font-size: 15px; font-weight: 950;">إصدار كود خصم جديد 🎟️</h3>
+          <input type="text" id="txtCouponCode" placeholder="رمز الكود (مثال: WASLNI20)" class="inp-field" style="text-transform: uppercase;">
+          <input type="number" id="txtCouponDiscount" value="15" class="inp-field">
+          
+          <select id="selectCouponTarget" class="inp-field" style="background:#090f1c;" onchange="onScopeChange(this.value)">
+            <option value="all">كود عام (لجميع الزبائن)</option>
+            <option value="targeted">مخصص لرقم هاتف زبون محدد</option>
+          </select>
+
+          <div id="targetPhoneGroup" style="display: none;">
+            <input type="tel" id="txtTargetPhone" placeholder="07XXXXXXXXX" class="inp-field">
+          </div>
+
+          <button class="btn btn-grad" style="padding: 13px;" onclick="deployCoupon()">✓ تفعيل ونشر الكود</button>
+        </div>
+
+        <div class="table-box">
+          <div class="table-header"><h4 style="font-size: 13.5px; font-weight: 950;">الكودات الفعالة</h4></div>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>الكود</th><th>الخصم</th><th>النطاق</th><th>إلغاء</th></tr></thead>
+              <tbody id="couponsTbody"><tr><td colspan="4" style="text-align: center;">لا توجد كودات.</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 16. المكافآت والذروة -->
+    <section class="screen" id="secBonuses">
+      <div class="table-box" style="max-width: 480px; padding: 22px; display: flex; flex-direction: column; gap: 12px;">
+        <h3 style="font-size: 15px; font-weight: 950;">حوافز وساعات الذروة 🎁</h3>
+        <div>
+          <label style="font-size: 11.5px; color: var(--muted); display: block; margin-bottom: 5px;">عدد الرحلات المطلوب للهدف</label>
+          <input type="number" id="inBonusTripsCount" value="10" class="inp-field">
+        </div>
+        <div>
+          <label style="font-size: 11.5px; color: var(--muted); display: block; margin-bottom: 5px;">مبلغ المكافأة (د.ع)</label>
+          <input type="number" id="inBonusAmountIQD" value="10000" class="inp-field">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div>
+            <label style="font-size: 11.5px; color: var(--muted); display: block; margin-bottom: 5px;">وقت البدء</label>
+            <input type="time" id="inBonusTimeStart" value="12:00" class="inp-field">
+          </div>
+          <div>
+            <label style="font-size: 11.5px; color: var(--muted); display: block; margin-bottom: 5px;">وقت الانتهاء</label>
+            <input type="time" id="inBonusTimeEnd" value="16:00" class="inp-field">
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px; margin-top: 6px;">
+          <button class="btn btn-grad" style="flex: 2; padding: 12px;" onclick="saveBonus()">✓ تفعيل التحدي</button>
+          <button class="btn btn-danger" style="flex: 1; padding: 12px;" onclick="stopBonus()">إيقاف ✕</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 17. التسعير وخوارزمية المنصة -->
+    <section class="screen" id="secPricingEngine">
+      <div class="table-box" style="max-width: 480px; padding: 22px; display: flex; flex-direction: column; gap: 12px;">
+        <h3 style="font-size: 15px; font-weight: 950;">خوارزمية حساب الأجرة والعمولة ⚙️</h3>
+        <div>
+          <label style="font-size: 11.5px; color: var(--muted); display: block; margin-bottom: 5px;">نسبة اقتطاع المنصة (%)</label>
+          <input type="number" id="inCommissionPct" value="10" class="inp-field">
+        </div>
+        <div>
+          <label style="font-size: 11.5px; color: var(--muted); display: block; margin-bottom: 5px;">فتح العداد الأساسي (د.ع)</label>
+          <input type="number" id="inBasePrice" value="1500" class="inp-field">
+        </div>
+        <div>
+          <label style="font-size: 11.5px; color: var(--muted); display: block; margin-bottom: 5px;">سعر الكيلومتر الواحد (د.ع)</label>
+          <input type="number" id="inKmRate" value="500" class="inp-field">
+        </div>
+        <button class="btn btn-grad" style="padding: 13px;" onclick="savePricing()">حفظ الإعدادات المالية</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- نافذة تدقيق المستمسكات الـ 4 كاملة (8 صور بوجه وظهر) -->
+  <div class="modal-overlay" id="inspectorModal">
+    <div class="modal-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-glass); padding-bottom: 10px;">
+        <h3 style="font-size: 15.5px; font-weight: 950;">تدقيق وثائق الكابتن الـ 4 بوجه وظهر (8 صور)</h3>
+        <button style="background: none; border: none; font-size: 22px; color: var(--muted); cursor: pointer;" onclick="closeModal()">✕</button>
+      </div>
+
+      <div id="inspectorDetails" style="margin: 12px 0; background: rgba(255,255,255,0.05); padding: 12px; border-radius: 14px; font-size: 12.5px; line-height: 1.6; border: 1px solid var(--border-glass);"></div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(115px, 1fr)); gap: 10px; margin: 12px 0;">
+        <div style="text-align: center; border: 1px solid var(--border-glass); padding: 6px; border-radius: 12px; background: rgba(255,255,255,0.02);">
+          <b style="font-size: 11px; color:var(--cyan);">سنوية (وجه)</b>
+          <img id="vSanawaFront" style="width: 100%; height: 85px; object-fit: cover; border-radius: 8px; margin-top: 5px; cursor: pointer;" onclick="zoom(this.src)">
+        </div>
+        <div style="text-align: center; border: 1px solid var(--border-glass); padding: 6px; border-radius: 12px; background: rgba(255,255,255,0.02);">
+          <b style="font-size: 11px; color:var(--cyan);">سنوية (ظهر)</b>
+          <img id="vSanawaBack" style="width: 100%; height: 85px; object-fit: cover; border-radius: 8px; margin-top: 5px; cursor: pointer;" onclick="zoom(this.src)">
+        </div>
+        <div style="text-align: center; border: 1px solid var(--border-glass); padding: 6px; border-radius: 12px; background: rgba(255,255,255,0.02);">
+          <b style="font-size: 11px; color:var(--warning);">الإجازة (وجه)</b>
+          <img id="vLicenseFront" style="width: 100%; height: 85px; object-fit: cover; border-radius: 8px; margin-top: 5px; cursor: pointer;" onclick="zoom(this.src)">
+        </div>
+        <div style="text-align: center; border: 1px solid var(--border-glass); padding: 6px; border-radius: 12px; background: rgba(255,255,255,0.02);">
+          <b style="font-size: 11px; color:var(--warning);">الإجازة (ظهر)</b>
+          <img id="vLicenseBack" style="width: 100%; height: 85px; object-fit: cover; border-radius: 8px; margin-top: 5px; cursor: pointer;" onclick="zoom(this.src)">
+        </div>
+        <div style="text-align: center; border: 1px solid var(--border-glass); padding: 6px; border-radius: 12px; background: rgba(255,255,255,0.02);">
+          <b style="font-size: 11px; color:var(--success);">الهوية (وجه)</b>
+          <img id="vIdFront" style="width: 100%; height: 85px; object-fit: cover; border-radius: 8px; margin-top: 5px; cursor: pointer;" onclick="zoom(this.src)">
+        </div>
+        <div style="text-align: center; border: 1px solid var(--border-glass); padding: 6px; border-radius: 12px; background: rgba(255,255,255,0.02);">
+          <b style="font-size: 11px; color:var(--success);">الهوية (ظهر)</b>
+          <img id="vIdBack" style="width: 100%; height: 85px; object-fit: cover; border-radius: 8px; margin-top: 5px; cursor: pointer;" onclick="zoom(this.src)">
+        </div>
+        <div style="text-align: center; border: 1px solid var(--border-glass); padding: 6px; border-radius: 12px; background: rgba(255,255,255,0.02);">
+          <b style="font-size: 11px; color:var(--pink);">السكن (وجه)</b>
+          <img id="vResFront" style="width: 100%; height: 85px; object-fit: cover; border-radius: 8px; margin-top: 5px; cursor: pointer;" onclick="zoom(this.src)">
+        </div>
+        <div style="text-align: center; border: 1px solid var(--border-glass); padding: 6px; border-radius: 12px; background: rgba(255,255,255,0.02);">
+          <b style="font-size: 11px; color:var(--pink);">السكن (ظهر)</b>
+          <img id="vResBack" style="width: 100%; height: 85px; object-fit: cover; border-radius: 8px; margin-top: 5px; cursor: pointer;" onclick="zoom(this.src)">
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 8px; margin-top: 14px;">
+        <button class="btn btn-success" style="flex: 2; padding: 12px;" onclick="approveCap()">✓ اعتماد وتفعيل الكابتن</button>
+        <button class="btn btn-danger" style="flex: 1; padding: 12px;" onclick="freezeCap()">✕ تجميد الحساب</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- نافذة تطبيق العقوبات الإدارية على الزبائن أو الكباتن -->
+  <div class="modal-overlay" id="penaltyActionModal">
+    <div class="modal-card" style="max-width: 480px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-glass); padding-bottom: 10px;">
+        <h3 id="txtPenaltyTargetTitle" style="font-size: 15.5px; font-weight: 950; color: var(--danger);">فرض عقوبة إدارية</h3>
+        <button style="background: none; border: none; font-size: 22px; color: var(--muted); cursor: pointer;" onclick="closeModalById('penaltyActionModal')">✕</button>
+      </div>
+
+      <div style="margin: 14px 0; display: flex; flex-direction: column; gap: 12px;">
+        <label style="font-size: 12px; color: var(--muted); font-weight: bold;">نوع العقوبة المقررة:</label>
+        <select id="selectPenaltyType" class="inp-field" style="background:#090f1c;" onchange="onPenaltyTypeChange(this.value)">
+          <option value="warning">توجيه إنذار أولي رسمي</option>
+          <option value="ban_5h">حظر مؤقت لمدة 5 ساعات</option>
+          <option value="ban_24h">حظر مؤقت لمدة 24 ساعة</option>
+          <option value="fine">فرض غرامة مالية تسجل بذمته</option>
+          <option value="permanent_ban">حظر دائم وإلغاء الحساب</option>
+        </select>
+
+        <div id="penaltyFineAmountBox" style="display: none;">
+          <label style="font-size: 12px; color: var(--muted); font-weight: bold;">مبلغ الغرامة (د.ع):</label>
+          <input type="number" id="inPenaltyFineAmount" placeholder="مثال: 5000" class="inp-field">
+        </div>
+
+        <label style="font-size: 12px; color: var(--muted); font-weight: bold;">سبب العقوبة (سيظهر للمستخدم):</label>
+        <textarea id="txtPenaltyReason" placeholder="اكتب سبب فرض العقوبة بوضوح..." class="inp-field" style="height: 85px; resize: none;"></textarea>
+
+        <button class="btn btn-danger" style="padding: 13px; font-size: 13px; margin-top: 6px;" onclick="executePenalty()">
+          تنفيذ وتطبيق العقوبة فوراً ⚡
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import {
+      getFirestore, collection, doc, onSnapshot, updateDoc, setDoc, getDoc, deleteDoc, query, where, limit, orderBy, addDoc, serverTimestamp, increment, runTransaction
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDOUbHXIDwnEslmhwb2f_Jo83XpmpLVzFY",
+      authDomain: "tixe-4d8ac.firebaseapp.com",
+      databaseURL: "https://tixe-4d8ac-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "tixe-4d8ac",
+      storageBucket: "tixe-4d8ac.firebasestorage.app",
+      messagingSenderId: "1009320674344",
+      appId: "1:1009320674344:web:5b509fa96d12be29e1a11d"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const defaultHQ = [31.0450, 46.2570];
+    let map = null;
+    let mapInitialized = false;
+    let coverageCircle = null;
+    let heatLayer = null;
+    let inspectedPhone = null;
+    let captainsCache = [];
+    let currentCapFilter = "all";
+    let exportTrips = [];
+    let activePenaltyContext = { role: null, phone: null, name: null };
+
+    // تهيئة الخريطة الحرارية (Heatmap) المجانية 100% بدون أي مفتاح ترخيص
+    function initHeatMapLazy() {
+      if (mapInitialized) return;
+      map = L.map("commandMap", { zoomControl: false }).setView(defaultHQ, 14);
+      // استخدام سيرفر OpenStreetMap الرسمي المجاني الفاتح والنظيف
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+      mapInitialized = true;
+      drawCoverage(Number(document.getElementById("inCoverageRadiusKm").value) || 12);
+      startHeatmapListener();
+    }
+
+    function drawCoverage(r) {
+      if (!map) return;
+      if (coverageCircle) map.removeLayer(coverageCircle);
+      coverageCircle = L.circle(defaultHQ, {
+        color: "#22d3ee", fillColor: "#22d3ee", fillOpacity: 0.05, radius: r * 1000, weight: 1.5, dashArray: "5, 6"
+      }).addTo(map);
+    }
+
+    window.toggleMenu = () => document.getElementById("mainSidebar").classList.toggle("active");
+
+    window.switchTab = function(screenId, el) {
+      document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+      document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+      document.getElementById(screenId).classList.add("active");
+      el.classList.add("active");
+      document.getElementById("txtHeaderTitle").innerText = el.innerText.trim();
+
+      if (window.innerWidth <= 960) toggleMenu();
+
+      if (screenId === "secHeatMap") {
+        initHeatMapLazy();
+        setTimeout(() => map && map.invalidateSize(), 150);
+      }
+    };
+
+    // توليد الخريطة الحرارية لنقاط الطلبات (Heatmap)
+    function startHeatmapListener() {
+      onSnapshot(collection(db, "trips"), snap => {
+        const heatPoints = [];
+        snap.forEach(d => {
+          const t = d.data();
+          if (t.pickup?.lat && t.pickup?.lng) {
+            heatPoints.push([t.pickup.lat, t.pickup.lng, 0.75]);
+          }
+        });
+
+        if (heatLayer && map) map.removeLayer(heatLayer);
+        if (heatPoints.length && map) {
+          heatLayer = L.heatLayer(heatPoints, {
+            radius: 28,
+            blur: 18,
+            maxZoom: 17,
+            gradient: { 0.2: '#22d3ee', 0.5: '#facc15', 0.8: '#ff7100', 1.0: '#ef4444' }
+          }).addTo(map);
+        }
+      });
+    }
+
+    // 1. مراقبة الرحلات المباشرة الحية
+    const qLiveHub = query(collection(db, "trips"), where("status", "in", ["accepted", "arrived", "on_way"]));
+    onSnapshot(qLiveHub, snap => {
+      const tbody = document.getElementById("liveHubTbody");
+      const count = snap.size;
+      document.getElementById("badgeLiveCount").innerText = count;
+      document.getElementById("lblLiveTripsCount").innerText = count;
+      document.getElementById("tagLiveHubCount").innerText = `${count} رحلات نشطة`;
+
+      if (snap.empty) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--muted);">لا توجد رحلات جارية في هذه اللحظة.</td></tr>';
+        return;
+      }
+
+      let rows = '';
+      snap.forEach(d => {
+        const t = d.data();
+        let statusTag = '<span class="tag-status tag-primary">🧭 في الطريق للزبون</span>';
+        if (t.status === "arrived") statusTag = '<span class="tag-status tag-warning">📍 وصل لموقع الزبون</span>';
+        if (t.status === "on_way") statusTag = '<span class="tag-status tag-success">🚀 المشوار جارٍ نحو الوجهة</span>';
+
+        rows += `<tr>
+          <td><code style="color:var(--cyan);">#${d.id.slice(0, 6)}</code></td>
+          <td><b>${t.captainName || 'كابتن'}</b><br><small style="color:var(--muted);">${t.captainPhone || ''} | ${t.captainCar || ''}</small></td>
+          <td><b>${t.userName || 'الزبون'}</b><br><small style="color:var(--muted);">${t.userPhone || ''}</small></td>
+          <td>
+            <span style="color:var(--warning);">📍 ${t.pickup?.address || 'موقع الانطلاق'}</span><br>
+            <span style="color:var(--cyan);">🏁 ${t.dropoff?.address || 'الوجهة'}</span>
+          </td>
+          <td><b style="color:var(--success); font-size:14px;">${Number(t.fare || 1500).toLocaleString()} د.ع</b></td>
+          <td>${statusTag}</td>
+          <td>
+            <button class="btn btn-danger" style="padding:4px 10px; font-size:11px;" onclick="adminCancelLiveTrip('${d.id}')">إلغاء قسري ✕</button>
+          </td>
+        </tr>`;
+      });
+      tbody.innerHTML = rows;
+    });
+
+    window.adminCancelLiveTrip = async tripId => {
+      if (!confirm("هل أنت متأكد من إلغاء هذه الرحلة قسرياً من لوحة الإدارة؟")) return;
+      await updateDoc(doc(db, "trips", tripId), {
+        status: "cancelled",
+        cancelledBy: "admin",
+        cancelReason: "إلغاء قسري من قبل غرفة عمليات الإدارة",
+        cancelledAt: serverTimestamp()
+      });
+      alert("✅ تم إلغاء الرحلة فوراً.");
+    };
+
+    // 2. سجل الإلغاءات التفصيلي مع بيان السبب (Audit Log)
+    const qCancels = query(collection(db, "trips"), where("status", "==", "cancelled"), orderBy("createdAt", "desc"), limit(35));
+    onSnapshot(qCancels, snap => {
+      const tbody = document.getElementById("cancelsLogTbody");
+      document.getElementById("badgeCancelCount").innerText = snap.size;
+      document.getElementById("lblCancelsCount").innerText = snap.size;
+      document.getElementById("tagCancelLogCount").innerText = `${snap.size} ملغاة`;
+
+      if (snap.empty) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--muted);">لا توجد رحلات ملغاة مسجلة حديثاً.</td></tr>';
+        return;
+      }
+
+      let rows = '';
+      snap.forEach(d => {
+        const t = d.data();
+        const who = t.cancelledBy === 'captain' ? 'الكابتن' : (t.cancelledBy === 'admin' ? 'الإدارة' : 'الزبون');
+        const whoColor = t.cancelledBy === 'captain' ? 'var(--cyan)' : (t.cancelledBy === 'admin' ? 'var(--danger)' : 'var(--warning)');
+        const name = t.cancelledBy === 'captain' ? (t.captainName || 'كابتن') : (t.userName || 'زبون');
+        const phone = t.cancelledBy === 'captain' ? (t.captainPhone || '--') : (t.userPhone || '--');
+
+        rows += `<tr>
+          <td><code style="color:var(--muted);">#${d.id.slice(0,6)}</code></td>
+          <td><b style="color:${whoColor};">${who}</b></td>
+          <td>${name}</td>
+          <td>${phone}</td>
+          <td><span style="background:rgba(239,68,68,0.15); color:var(--danger); padding:4px 9px; border-radius:8px; font-weight:bold;">${t.cancelReason || 'إلغاء يدوي مباشر'}</span></td>
+          <td><small style="color:var(--muted);">${t.createdAt ? new Date(t.createdAt.seconds * 1000).toLocaleTimeString('ar-IQ') : '--'}</small></td>
+        </tr>`;
+      });
+      tbody.innerHTML = rows;
+    });
+
+    // 3. مخالفات الكباتن (التخطي المتكرر 10 مرات)
+    onSnapshot(collection(db, "captains"), snap => {
+      const tbody = document.getElementById("capsPenaltiesTbody");
+      let count = 0;
+      let rows = '';
+
+      snap.forEach(d => {
+        const c = d.data();
+        const skips = c.skipCount || 0;
+        if (skips >= 10) {
+          count++;
+          rows += `<tr>
+            <td><b>${c.name || 'كابتن'}</b></td>
+            <td><code>${d.id}</code></td>
+            <td><b style="color:var(--danger); font-size:15px;">${skips}</b> تخطي</td>
+            <td><span style="color:${c.penaltyStatus ? 'var(--danger)' : 'var(--success)'};">${c.penaltyStatus ? (c.penaltyReason || 'معاقب') : 'نشط'}</span></td>
+            <td>
+              <button class="btn btn-danger" style="padding:4px 10px; font-size:11px;" onclick="openPenaltyModal('captain', '${d.id}', '${c.name}')">معاقبة الكابتن ⚡</button>
+              <button class="btn btn-success" style="padding:4px 10px; font-size:11px;" onclick="forgiveAccount('captain', '${d.id}')">تصفير السجل ✓</button>
+            </td>
+          </tr>`;
+        }
+      });
+
+      document.getElementById("badgeCapSkips").innerText = count;
+      tbody.innerHTML = rows || '<tr><td colspan="5" style="text-align: center; color: var(--muted);">لا يوجد كباتن مفرطين في التخطي حالياً.</td></tr>';
+    });
+
+    // 4. مخالفات الزبائن (الإلغاء المتكرر 5 مرات)
+    onSnapshot(collection(db, "users"), snap => {
+      const tbody = document.getElementById("custPenaltiesTbody");
+      let count = 0;
+      let rows = '';
+
+      snap.forEach(d => {
+        const u = d.data();
+        const cancels = u.cancelCount || 0;
+        if (cancels >= 5) {
+          count++;
+          rows += `<tr>
+            <td><b>${u.name || 'زبون'}</b></td>
+            <td><code>${d.id}</code></td>
+            <td><b style="color:var(--danger); font-size:15px;">${cancels}</b> إلغاء</td>
+            <td><span style="color:${u.penaltyStatus ? 'var(--danger)' : 'var(--success)'};">${u.penaltyStatus ? (u.penaltyReason || 'معاقب') : 'نشط'}</span></td>
+            <td>
+              <button class="btn btn-danger" style="padding:4px 10px; font-size:11px;" onclick="openPenaltyModal('customer', '${d.id}', '${u.name}')">فرض عقوبة ⚡</button>
+              <button class="btn btn-success" style="padding:4px 10px; font-size:11px;" onclick="forgiveAccount('customer', '${d.id}')">تصفير ومسامحة ✓</button>
+            </td>
+          </tr>`;
+        }
+      });
+
+      document.getElementById("badgeCustCancels").innerText = count;
+      tbody.innerHTML = rows || '<tr><td colspan="5" style="text-align: center; color: var(--muted);">لا يوجد زبائن تجاوزوا حد الـ 5 إلغاءات.</td></tr>';
+    });
+
+    // دوال فرض العقوبات على الزبائن والكباتن
+    window.openPenaltyModal = (role, phone, name) => {
+      activePenaltyContext = { role, phone, name };
+      document.getElementById("txtPenaltyTargetTitle").innerText = `فرض عقوبة على (${name}) - [${role === 'captain' ? 'كابتن' : 'زبون'}]`;
+      document.getElementById("penaltyActionModal").style.display = "flex";
+    };
+
+    window.closeModalById = id => document.getElementById(id).style.display = "none";
+
+    window.onPenaltyTypeChange = type => {
+      document.getElementById("penaltyFineAmountBox").style.display = type === "fine" ? "block" : "none";
+    };
+
+    window.executePenalty = async () => {
+      const type = document.getElementById("selectPenaltyType").value;
+      const reason = document.getElementById("txtPenaltyReason").value.trim() || "مخالفة سياسة المنصة بتكرار الإلغاء/التخطي";
+      const fineAmount = Number(document.getElementById("inPenaltyFineAmount").value) || 5000;
+      const col = activePenaltyContext.role === 'captain' ? 'captains' : 'users';
+
+      const updatePayload = {
+        penaltyStatus: type,
+        penaltyReason: reason,
+        penalizedAt: serverTimestamp()
+      };
+
+      if (type === 'ban_5h') {
+        updatePayload.bannedUntil = Date.now() + (5 * 60 * 60 * 1000);
+        updatePayload.status = 'banned';
+      } else if (type === 'ban_24h') {
+        updatePayload.bannedUntil = Date.now() + (24 * 60 * 60 * 1000);
+        updatePayload.status = 'banned';
+      } else if (type === 'permanent_ban') {
+        updatePayload.status = 'banned';
+      } else if (type === 'fine') {
+        if (activePenaltyContext.role === 'captain') {
+          updatePayload.companyDebt = increment(fineAmount);
+        } else {
+          updatePayload.unpaidFine = fineAmount;
+        }
+      }
+
+      await updateDoc(doc(db, col, activePenaltyContext.phone), updatePayload);
+      closeModalById('penaltyActionModal');
+      alert("✅ تم تنفيذ وتطبيق العقوبة بنجاح!");
+    };
+
+    window.forgiveAccount = async (role, phone) => {
+      if (!confirm("هل تريد تصفير سجل هذا الحساب وإلغاء أي عقوبة مفروضة عليه؟")) return;
+      const col = role === 'captain' ? 'captains' : 'users';
+      const resetPayload = role === 'captain'
+        ? { skipCount: 0, penaltyStatus: null, penaltyReason: null, status: 'active' }
+        : { cancelCount: 0, penaltyStatus: null, penaltyReason: null, status: 'active', unpaidFine: 0 };
+      await updateDoc(doc(db, col, phone), resetPayload);
+      alert("✅ تم تصفير السجل بنجاح.");
+    };
+
+    // القواعد المالية والإعدادات
+    onSnapshot(doc(db, "settings", "pricing_and_rules"), snap => {
+      if (!snap.exists()) return;
+      const d = snap.data();
+      const r = d.coverageRadiusKm || 12;
+      document.getElementById("inCoverageRadiusKm").value = r;
+      if (mapInitialized) drawCoverage(r);
+      if (d.bonusTargetTrips) document.getElementById("inBonusTripsCount").value = d.bonusTargetTrips;
+      if (d.bonusRewardAmount) document.getElementById("inBonusAmountIQD").value = d.bonusRewardAmount;
+      if (d.bonusStartTime) document.getElementById("inBonusTimeStart").value = d.bonusStartTime;
+      if (d.bonusEndTime) document.getElementById("inBonusTimeEnd").value = d.bonusEndTime;
+      if (d.commissionPercentage) document.getElementById("inCommissionPct").value = d.commissionPercentage;
+      if (d.basePrice) document.getElementById("inBasePrice").value = d.basePrice;
+      if (d.pricePerKm) document.getElementById("inKmRate").value = d.pricePerKm;
+    });
+
+    window.saveCoverage = async () => {
+      const r = Number(document.getElementById("inCoverageRadiusKm").value);
+      await setDoc(doc(db, "settings", "pricing_and_rules"), { coverageRadiusKm: r }, { merge: true });
+      if (mapInitialized) drawCoverage(r);
+      alert("✅ تم حفظ نطاق التغطية!");
+    };
+
+    // سجل المشاوير العام
+    const qLog = query(collection(db, "trips"), orderBy("createdAt", "desc"), limit(35));
+    onSnapshot(qLog, snap => {
+      exportTrips = [];
+      let rev = 0;
+      const rows = [];
+
+      snap.forEach(d => {
+        const t = d.data();
+        t.id = d.id;
+        exportTrips.push(t);
+        if (t.status === "completed") {
+          rev += (t.commissionCut || (t.fare * 0.10) || 0);
+        }
+        rows.push(`<tr>
+          <td><code style="color:var(--cyan);">#${t.id.slice(0, 5)}</code></td>
+          <td>${t.captainName || "--"}</td>
+          <td>${t.userName || "--"}</td>
+          <td>${t.pickup?.address || ""} ← ${t.dropoff?.address || ""}</td>
+          <td>${t.distanceKm || 0} كم</td>
+          <td><b>${(t.fare || 0).toLocaleString()} د.ع</b></td>
+          <td style="color:var(--success); font-weight:950;">+${(t.commissionCut || Math.round((t.fare||0)*0.10)).toLocaleString()} د.ع</td>
+          <td><span class="tag-status tag-primary">${t.status}</span></td>
+        </tr>`);
+      });
+
+      document.getElementById("allTripsTbody").innerHTML = rows.join("") || "<tr><td colspan='8' style='text-align:center;'>لا توجد رحلات مسجلة.</td></tr>";
+      document.getElementById("lblPlatformRev").innerText = `${Math.round(rev).toLocaleString()} د.ع`;
+    });
+
+    // إدارة الكباتن وتدقيق الوثائق الـ 8
+    onSnapshot(collection(db, "captains"), snap => {
+      captainsCache = [];
+      let pending = 0, locked = 0;
+
+      snap.forEach(d => {
+        const c = d.data();
+        c.phone = d.id;
+        const debt = c.companyDebt || 0;
+
+        // القفل التلقائي إذا تجاوز 10,000 د.ع بدون رصيد محفظة يغطيه
+        if (debt >= 10000 && (c.walletBalance || 0) <= 0 && c.status !== "debt_locked" && c.status !== "blocked") {
+          updateDoc(doc(db, "captains", c.phone), { status: "debt_locked", isOnline: false });
+          c.status = "debt_locked";
+        }
+        if (c.status === "debt_locked" || c.status === "blocked") locked++;
+        if (c.status === "pending_approval") pending++;
+        captainsCache.push(c);
+      });
+
+      document.getElementById("badgePendingCaps").innerText = pending;
+      document.getElementById("lblPendingCapsCount").innerText = pending;
+      document.getElementById("lblLockedDebtsCount").innerText = locked;
+      renderCaps(currentCapFilter);
+    });
+
+    window.filterCaps = f => { currentCapFilter = f; renderCaps(f); };
+
+    function renderCaps(filter) {
+      const grid = document.getElementById("captainsGrid");
+      let list = captainsCache;
+      if (filter === "debt_locked") list = captainsCache.filter(c => c.status === "debt_locked" || c.status === "blocked");
+      if (filter === "pending_approval") list = captainsCache.filter(c => c.status === "pending_approval");
+
+      const cards = list.map(c => {
+        const debt = c.companyDebt || 0;
+        const isLocked = c.status === "debt_locked" || c.status === "blocked";
+        const isPending = c.status === "pending_approval";
+
+        return `<div class="captain-tile ${isLocked ? 'locked-danger' : ''}">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <img src="${c.avatarUrl || 'logo.png'}" class="captain-avatar" onerror="this.src='logo.png'">
+              <div>
+                <h4 style="font-size:14px; font-weight:950;">${c.name || "بدون اسم"}</h4>
+                <span style="font-size:11.5px; color:var(--muted);">📱 ${c.phone}</span>
+              </div>
+            </div>
+            <div>
+              ${c.status === "blocked" ? '<span class="tag-status tag-danger">محظور يدوي</span>' :
+                c.status === "debt_locked" ? '<span class="tag-status tag-danger">🔒 مقفل (ديون)</span>' :
+                isPending ? '<span class="tag-status tag-warning">⏳ تدقيق</span>' :
+                '<span class="tag-status tag-success">✓ نشط</span>'}
+            </div>
+          </div>
+
+          <div class="debt-badge">
+            <span>مستحقات المنصة:</span>
+            <b style="font-size:13.5px;">${debt.toLocaleString()} د.ع</b>
+          </div>
+
+          <div style="background:rgba(255,255,255,0.03); border-radius:14px; padding:9px 13px; font-size:12px; border:1px solid var(--border-glass); display:flex; justify-content:space-between;">
+            <span>🚗 <b>${c.carModel || '--'}</b> (${c.carPlate || '--'})</span>
+            <span>⭐ ${(c.rating || 5.0).toFixed(1)}</span>
+          </div>
+
+          <div style="display:flex; gap:6px; margin-top:2px;">
+            <button class="btn btn-ghost" style="flex:1;" onclick="openInspector('${c.phone}', '${c.name}', '${c.carModel}')">👁️ الوثائق الـ 8</button>
+            ${c.status === 'blocked' ?
+              `<button class="btn btn-success" style="flex:1;" onclick="toggleBlock('${c.phone}', 'active')">فك الحظر</button>` :
+              `<button class="btn btn-danger" style="flex:1;" onclick="toggleBlock('${c.phone}', 'blocked')">قفل / حظر</button>`
+            }
+          </div>
+        </div>`;
+      });
+
+      grid.innerHTML = cards.join("") || "<div style='text-align:center; color:var(--muted); grid-column:1/-1;'>لا توجد بيانات لهذا الفرز.</div>";
+    }
+
+    window.toggleBlock = async (phone, st) => {
+      const isBlock = st === 'blocked';
+      await updateDoc(doc(db, "captains", phone), { 
+        status: st, 
+        isOnline: !isBlock 
+      });
+      alert(isBlock ? "🔒 تم حظر الكابتن وفصله عن الرادار فوراً." : "✅ تم فك الحظر عن الكابتن.");
+    };
+
+    window.openInspector = async (phone, name, car) => {
+      inspectedPhone = phone;
+      document.getElementById("inspectorDetails").innerHTML = `<b>الكابتن:</b> ${name} | <b>الهاتف:</b> ${phone} | <b>المركبة:</b> ${car}`;
+
+      ["vSanawaFront","vSanawaBack","vLicenseFront","vLicenseBack","vIdFront","vIdBack","vResFront","vResBack"].forEach(id => {
+        document.getElementById(id).src = "https://via.placeholder.com/150?text=جاري_التحميل";
+      });
+      document.getElementById("inspectorModal").style.display = "flex";
+
+      const snap = await getDoc(doc(db, "captains", phone));
+      if (snap.exists()) {
+        const d = snap.data().docs || {};
+        document.getElementById("vSanawaFront").src = d.sanawaFront || "";
+        document.getElementById("vSanawaBack").src = d.sanawaBack || "";
+        document.getElementById("vLicenseFront").src = d.licenseFront || "";
+        document.getElementById("vLicenseBack").src = d.licenseBack || "";
+        document.getElementById("vIdFront").src = d.idFront || "";
+        document.getElementById("vIdBack").src = d.idBack || "";
+        document.getElementById("vResFront").src = d.residenceFront || "";
+        document.getElementById("vResBack").src = d.residenceBack || "";
+      }
+    };
+
+    window.closeModal = () => document.getElementById("inspectorModal").style.display = "none";
+    window.zoom = src => { if (src && src.length > 30) { const w = window.open(""); w.document.write(`<img src="${src}" style="max-width:100%;height:auto;display:block;margin:20px auto;">`); } };
+
+    window.approveCap = async () => {
+      if (!inspectedPhone) return;
+      await updateDoc(doc(db, "captains", inspectedPhone), { status: "active" });
+      closeModal();
+      alert("✅ تم اعتماد الوثائق وتفعيل الكابتن بنجاح!");
+    };
+
+    window.freezeCap = async () => {
+      if (!inspectedPhone) return;
+      await updateDoc(doc(db, "captains", inspectedPhone), { status: "blocked", isOnline: false });
+      closeModal();
+      alert("⚠️ تم تجميد وفصل حساب الكابتن.");
+    };
+
+    // الاستماع لطلبات الشحن المعلقة
+    onSnapshot(query(collection(db, "finance_logs"), where("status", "==", "pending_review")), snap => {
+      const tbody = document.getElementById("topupsTbody");
+      const rows = [];
+      let count = 0;
+
+      snap.forEach(d => {
+        const item = d.data();
+        const id = d.id;
+        count++;
+
+        rows.push(`<tr>
+          <td><b>${item.captainName || "كابتن"}</b></td>
+          <td><code>${item.captainPhone}</code></td>
+          <td style="color:var(--cyan); font-weight:950;">${(item.amount || 0).toLocaleString()} د.ع</td>
+          <td><span class="tag-status tag-warning">${item.type}</span></td>
+          <td>
+            ${item.receiptImg ? `<button class="btn btn-ghost" style="padding:4px 10px; font-size:11px;" onclick="zoom('${item.receiptImg}')">👁️ عرض الوصل</button>` : 'لا يوجد'}
+          </td>
+          <td>
+            <button class="btn btn-success" style="padding:4px 12px; font-size:11px;" onclick="approveTopup('${id}', '${item.captainPhone}', ${item.amount})">✓ قبول وتعبئة الرصيد</button>
+            <button class="btn btn-danger" style="padding:4px 10px; font-size:11px;" onclick="rejectTopup('${id}')">✕ رفض</button>
+          </td>
+        </tr>`);
+      });
+
+      document.getElementById("badgePendingTopups").innerText = count;
+      document.getElementById("tagTopupsCount").innerText = `${count} طلبات معلقة`;
+      tbody.innerHTML = rows.join("") || "<tr><td colspan='6' style='text-align:center; color:var(--muted);'>لا توجد طلبات شحن معلقة حالياً.</td></tr>";
+    });
+
+    window.approveTopup = async (logId, captainPhone, amount) => {
+      if (!confirm(`هل أنت متأكد من وصول مبلغ (${amount.toLocaleString()} د.ع) واعتماد شحن رصيد الكابتن ${captainPhone}؟`)) return;
+
+      try {
+        await runTransaction(db, async tx => {
+          const capRef = doc(db, "captains", captainPhone);
+          const logRef = doc(db, "finance_logs", logId);
+          const capSnap = await tx.get(capRef);
+
+          if (capSnap.exists()) {
+            const capData = capSnap.data();
+            let currentDebt = capData.companyDebt || 0;
+            let currentWallet = capData.walletBalance || 0;
+
+            if (amount >= currentDebt) {
+              currentWallet += (amount - currentDebt);
+              currentDebt = 0;
+            } else {
+              currentDebt -= amount;
+            }
+
+            let newStatus = currentDebt < 10000 && capData.status === "debt_locked" ? "active" : capData.status;
+
+            tx.update(capRef, {
+              companyDebt: currentDebt,
+              walletBalance: currentWallet,
+              status: newStatus
+            });
+          }
+
+          tx.update(logRef, {
+            status: "approved",
+            approvedAt: serverTimestamp()
+          });
+        });
+
+        alert("✅ تم اعتماد التحويل وتحديث حساب الكابتن وفك قفله بنجاح!");
+      } catch (err) {
+        alert("❌ خطأ أثناء المعالجة: " + err.message);
+      }
+    };
+
+    window.rejectTopup = async (logId) => {
+      if (confirm("هل تريد رفض طلب التحويل هذا؟")) {
+        await updateDoc(doc(db, "finance_logs", logId), { status: "rejected" });
+        alert("⚠️ تم رفض الطلب.");
+      }
+    };
+
+    onSnapshot(collection(db, "disputes"), snap => {
+      const tbody = document.getElementById("disputesTbody");
+      const rows = [];
+      let pendingCount = 0;
+
+      snap.forEach(d => {
+        const item = d.data();
+        const id = d.id;
+        if (item.status !== "resolved") pendingCount++;
+
+        rows.push(`<tr>
+          <td><b>${item.reporterName || "مستخدم"}</b><br><small style="color:var(--muted);">${item.reporterPhone || ""}</small></td>
+          <td>${item.accusedName || "--"}<br><small style="color:var(--muted);">${item.accusedPhone || ""}</small></td>
+          <td><span class="tag-status tag-warning">${item.issueType || "شكوى عامة"}</span></td>
+          <td style="max-width:200px;">${item.details || "--"}</td>
+          <td><code>#${(item.tripId || "").slice(0,5)}</code></td>
+          <td>
+            <a href="https://wa.me/964${(item.reporterPhone||'').replace(/^0/,'')}" target="_blank" class="btn btn-ghost" style="padding:4px 9px; font-size:11px;">واتساب 📲</a>
+            <button class="btn btn-success" style="padding:4px 9px; font-size:11px;" onclick="resolveDispute('${id}')">تم الحل ✓</button>
+          </td>
+        </tr>`);
+      });
+
+      document.getElementById("badgePendingDisputes").innerText = pendingCount;
+      document.getElementById("tagDisputesCount").innerText = `${pendingCount} بلاغات نشطة`;
+      tbody.innerHTML = rows.join("") || "<tr><td colspan='6' style='text-align:center; color:var(--muted);'>لا توجد شكاوى أو بلاغات حالياً.</td></tr>";
+    });
+
+    window.resolveDispute = async id => {
+      await updateDoc(doc(db, "disputes", id), { status: "resolved", resolvedAt: serverTimestamp() });
+      alert("✅ تم إغلاق الشكوى واعتبارها محلولة.");
+    };
+
+    window.processCaptainFinance = async () => {
+      const phone = document.getElementById("txtFinanceCapPhone").value.trim();
+      const amount = Number(document.getElementById("txtFinanceAmount").value);
+      const type = document.getElementById("selectFinanceType").value;
+
+      if (!phone || !amount) { alert("أدخل رقم الهاتف والمبلغ"); return; }
+
+      const capRef = doc(db, "captains", phone);
+      const snap = await getDoc(capRef);
+      if (!snap.exists()) { alert("الكابتن غير موجود بهذا الرقم"); return; }
+
+      if (type === "settle") {
+        await updateDoc(capRef, { companyDebt: 0, status: "active" });
+      } else {
+        await updateDoc(capRef, { walletBalance: increment(amount) });
+      }
+
+      await addDoc(collection(db, "finance_logs"), {
+        captainPhone: phone,
+        amount: amount,
+        type: type === "settle" ? "تسديد ديون نقدياً" : "شحن محفظة مسبق",
+        status: "approved",
+        timestamp: serverTimestamp()
+      });
+
+      alert("✅ تمت العملية المالية بنجاح!");
+      document.getElementById("txtFinanceAmount").value = "";
+    };
+
+    onSnapshot(query(collection(db, "finance_logs"), orderBy("timestamp", "desc"), limit(20)), snap => {
+      const rows = [];
+      snap.forEach(d => {
+        const item = d.data();
+        rows.push(`<tr>
+          <td><b>${item.captainPhone}</b></td>
+          <td style="color:var(--cyan); font-weight:950;">${(item.amount || 0).toLocaleString()} د.ع</td>
+          <td><span class="tag-status tag-success">${item.type}</span></td>
+          <td><small style="color:var(--muted);">${new Date().toLocaleDateString('ar-IQ')}</small></td>
+        </tr>`);
+      });
+      document.getElementById("financesLogTbody").innerHTML = rows.join("") || "<tr><td colspan='4' style='text-align:center;'>لا توجد معاملات مسجلة.</td></tr>";
+    });
+
+    window.sendBroadcastAlert = async () => {
+      const title = document.getElementById("txtBroadcastTitle").value.trim();
+      const body = document.getElementById("txtBroadcastBody").value.trim();
+      const target = document.getElementById("selectBroadcastTarget").value;
+
+      if (!title || !body) { alert("أدخل عنوان ونص الإشعار"); return; }
+
+      await addDoc(collection(db, "broadcast_alerts"), {
+        title, body, target, createdAt: serverTimestamp()
+      });
+
+      alert("📢 تم بث الإشعار بنجاح لجميع الأجهزة المستهدفة!");
+      document.getElementById("txtBroadcastTitle").value = "";
+      document.getElementById("txtBroadcastBody").value = "";
+    };
+
+    window.addGeofenceZone = async () => {
+      const name = document.getElementById("txtZoneName").value.trim();
+      const lat = Number(document.getElementById("txtZoneLat").value);
+      const lng = Number(document.getElementById("txtZoneLng").value);
+      const radius = Number(document.getElementById("txtZoneRadius").value) || 500;
+      const type = document.getElementById("selectZoneType").value;
+
+      if (!name || !lat || !lng) { alert("أدخل اسم المنطقة والإحداثيات بشكل صحيح"); return; }
+
+      await addDoc(collection(db, "zones"), { name, lat, lng, radius, type, createdAt: serverTimestamp() });
+      alert("✅ تم تفعيل المنطقة بنجاح!");
+      document.getElementById("txtZoneName").value = "";
+    };
+
+    onSnapshot(collection(db, "zones"), snap => {
+      const rows = [];
+      snap.forEach(d => {
+        const z = d.data();
+        const id = d.id;
+        rows.push(`<tr>
+          <td><b>${z.name}</b></td>
+          <td><span class="tag-status ${z.type === 'forbidden' ? 'tag-danger' : 'tag-warning'}">${z.type === 'forbidden' ? 'منطقة حمراء 🛑' : 'ذروة +25% 🔥'}</span></td>
+          <td>${z.radius} متر</td>
+          <td><button class="btn btn-danger" style="padding:3px 7px; font-size:11px;" onclick="deleteDoc(doc(db,'zones','${id}'))">حذف</button></td>
+        </tr>`);
+      });
+      document.getElementById("zonesListTbody").innerHTML = rows.join("") || "<tr><td colspan='4' style='text-align:center;'>لا توجد مناطق محددة.</td></tr>";
+    });
+
+    onSnapshot(collection(db, "users"), snap => {
+      const rows = [];
+      snap.forEach(d => {
+        const u = d.data();
+        rows.push(`<tr>
+          <td><b>${u.name || "زبون"}</b></td>
+          <td><code>${d.id}</code></td>
+          <td>${u.totalTrips || 0} مشوار</td>
+          <td>${(u.totalKm || 0).toFixed(1)} كم</td>
+          <td>⭐ ${(u.rating || 5.0).toFixed(1)}</td>
+          <td><button class="btn btn-ghost" style="padding:4px 9px; font-size:11px;" onclick="giftUser('${d.id}')">🎟️ كود خصم</button></td>
+        </tr>`);
+      });
+      document.getElementById("usersTbody").innerHTML = rows.join("") || "<tr><td colspan='6' style='text-align:center;'>لا يوجد زبائن مسجلين.</td></tr>";
+    });
+
+    window.giftUser = phone => {
+      document.getElementById("selectCouponTarget").value = "targeted";
+      onScopeChange("targeted");
+      document.getElementById("txtTargetPhone").value = phone;
+      document.getElementById("txtCouponCode").value = `VIP${Math.floor(100 + Math.random() * 900)}`;
+      switchTab("secCoupons", document.querySelectorAll(".nav-btn")[14]);
+    };
+
+    window.onScopeChange = v => {
+      document.getElementById("targetPhoneGroup").style.display = v === "targeted" ? "block" : "none";
+    };
+
+    window.deployCoupon = async () => {
+      const code = document.getElementById("txtCouponCode").value.trim().toUpperCase();
+      const pct = Number(document.getElementById("txtCouponDiscount").value);
+      const scope = document.getElementById("selectCouponTarget").value;
+      const targetPhone = document.getElementById("txtTargetPhone").value.trim();
+
+      if (!code) { alert("أدخل رمز الكود"); return; }
+      if (scope === "targeted" && !targetPhone) { alert("أدخل رقم هاتف الزبون"); return; }
+
+      await setDoc(doc(db, "promo_codes", code), {
+        discountPercentage: pct, scope, targetPhone: scope === "targeted" ? targetPhone : null, isActive: true, createdAt: new Date()
+      });
+      alert(`✅ تم نشر الكود (${code}) بنجاح!`);
+      document.getElementById("txtCouponCode").value = "";
+    };
+
+    onSnapshot(collection(db, "promo_codes"), snap => {
+      const rows = [];
+      snap.forEach(d => {
+        const c = d.data();
+        rows.push(`<tr>
+          <td><b style="color:var(--cyan);">${d.id}</b></td>
+          <td><b>${c.discountPercentage || 15}%</b></td>
+          <td>${c.scope === 'targeted' ? `<span class="tag-status tag-warning">مخصص لـ ${c.targetPhone}</span>` : '<span class="tag-status tag-success">عام للجميع</span>'}</td>
+          <td><button class="btn btn-danger" style="padding:3px 7px; font-size:11px;" onclick="deleteDoc(doc(db,'promo_codes','${d.id}'))">حذف</button></td>
+        </tr>`);
+      });
+      document.getElementById("couponsTbody").innerHTML = rows.join("") || "<tr><td colspan='4' style='text-align:center;'>لا توجد كودات فعالة.</td></tr>";
+    });
+
+    window.saveBonus = async () => {
+      await setDoc(doc(db, "settings", "pricing_and_rules"), {
+        bonusTargetTrips: Number(document.getElementById("inBonusTripsCount").value),
+        bonusRewardAmount: Number(document.getElementById("inBonusAmountIQD").value),
+        bonusStartTime: document.getElementById("inBonusTimeStart").value,
+        bonusEndTime: document.getElementById("inBonusTimeEnd").value
+      }, { merge: true });
+      alert("✅ تم نشر وتفعيل تحدي اليوم بنجاح!");
+    };
+
+    window.stopBonus = async () => {
+      await setDoc(doc(db, "settings", "pricing_and_rules"), {
+        bonusTargetTrips: 0, bonusRewardAmount: 0, bonusStartTime: "", bonusEndTime: ""
+      }, { merge: true });
+      alert("🛑 تم إيقاف المكافآت.");
+    };
+
+    window.savePricing = async () => {
+      await setDoc(doc(db, "settings", "pricing_and_rules"), {
+        commissionPercentage: Number(document.getElementById("inCommissionPct").value),
+        basePrice: Number(document.getElementById("inBasePrice").value),
+        pricePerKm: Number(document.getElementById("inKmRate").value)
+      }, { merge: true });
+      alert("✅ تم حفظ وتحديث خوارزمية التسعير بنجاح!");
+    };
+
+    window.exportDataCSV = () => {
+      if (!exportTrips.length) { alert("لا توجد بيانات لتصديرها."); return; }
+      let csv = "data:text/csv;charset=utf-8,\uFEFFTripID,Captain,User,Fare,DistanceKM,Status\n";
+      exportTrips.forEach(t => {
+        csv += `"${t.id}","${t.captainName || ''}","${t.userName || ''}","${t.fare || 0}","${t.distanceKm || 0}","${t.status || ''}"\n`;
+      });
+      const a = document.createElement("a");
+      a.href = encodeURI(csv);
+      a.download = `wasalni_report_${Date.now()}.csv`;
+      a.click();
+    };
+  </script>
+</body>
+</html>
